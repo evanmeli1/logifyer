@@ -38,7 +38,10 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity 
         style={styles.personCard}
-        onPress={() => Alert.alert('Coming soon', 'Person detail screen')}
+        onPress={() => (navigation as any).navigate('Home', { 
+          screen: 'PersonDetail', 
+          params: { personId: item.id } 
+        })}
       >
         <View style={styles.personInfo}>
           <View style={styles.nameContainer}>

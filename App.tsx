@@ -6,6 +6,8 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { initDatabase, seedCategories } from './src/database/db';
 import HomeScreen from './src/screens/HomeScreen';
 import AddPersonScreen from './src/screens/AddPersonScreen';
+import PersonDetailScreen from './src/screens/PersonDetailScreen';
+import LogIncidentScreen from './src/screens/LogIncidentScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -23,15 +25,29 @@ function HomeStack() {
         component={AddPersonScreen}
         options={{ title: 'Add Person' }}
       />
+      <Stack.Screen 
+        name="PersonDetail" 
+        component={PersonDetailScreen}
+        options={{ title: 'Person Details' }}
+      />
+      <Stack.Screen 
+        name="LogIncident" 
+        component={LogIncidentScreen}
+        options={{ title: 'Log Incident' }}
+      />
     </Stack.Navigator>
   );
 }
 
-function LogScreen() {
+function LogStack() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Log</Text>
-    </View>
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="LogMain" 
+        component={LogIncidentScreen}
+        options={{ title: 'Log Incident' }}
+      />
+    </Stack.Navigator>
   );
 }
 
@@ -74,7 +90,11 @@ export default function App() {
           component={HomeStack}
           options={{ headerShown: false }}
         />
-        <Tab.Screen name="Log" component={LogScreen} />
+        <Tab.Screen 
+          name="Log" 
+          component={LogStack}
+          options={{ headerShown: false }}
+        />
         <Tab.Screen name="Settings" component={SettingsScreen} />
       </Tab.Navigator>
     </NavigationContainer>

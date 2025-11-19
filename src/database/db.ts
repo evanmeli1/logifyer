@@ -97,3 +97,35 @@ export const deletePerson = (personId: number) => {
   db.runSync('DELETE FROM incidents WHERE person_id = ?', [personId]);
   db.runSync('DELETE FROM people WHERE id = ?', [personId]);
 };
+
+export const getPersonById = (personId: number) => {
+  return db.getFirstSync('SELECT * FROM people WHERE id = ?', [personId]);
+};
+
+export const getIncidentsByPerson = (personId: number) => {
+  return db.getAllSync(`
+    SELECT i.*, c.name as category_name, c.emoji as category_emoji
+    FROM incidents i
+    JOIN categories c ON i.category_id = c.id
+    WHERE i.person_id = ?
+    ORDER BY i.timestamp DESC
+  `, [personId]);
+};
+
+export const deleteIncident = (incidentId: number) => {
+  db.runSync('DELETE FROM incidents WHERE id = ?', [incidentId]);
+};
+
+export const logIncident = (
+  personId: number,
+  categoryId: number,
+  points: number,
+  isMajor: boolean,
+  note?: string
+) => {
+  const finalPoints = isMajor ? points * 3 : points;
+  db.runSync(
+    'INSERT INTO incidents (person_id, category_id, points, is_major, note) VALUES (?, ?, ?, ?, ?)',
+    [personId, categoryId, finalPoints, isMajor ? 1 : 0, note || null]
+  );
+};
