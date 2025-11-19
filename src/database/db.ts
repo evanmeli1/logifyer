@@ -84,3 +84,16 @@ export const getAllPeople = () => {
 export const getAllCategories = () => {
   return db.getAllSync('SELECT * FROM categories');
 };
+
+export const getPersonScore = (personId: number) => {
+  const result = db.getFirstSync<{ total: number }>(
+    'SELECT COALESCE(SUM(points), 0) as total FROM incidents WHERE person_id = ?',
+    [personId]
+  );
+  return result?.total || 0;
+};
+
+export const deletePerson = (personId: number) => {
+  db.runSync('DELETE FROM incidents WHERE person_id = ?', [personId]);
+  db.runSync('DELETE FROM people WHERE id = ?', [personId]);
+};
