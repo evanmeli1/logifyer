@@ -89,7 +89,7 @@ export default function SettingsScreen() {
         
         <TouchableOpacity 
           style={styles.settingRow}
-          onPress={() => Alert.alert('Coming soon', 'Manage custom categories')}
+          onPress={() => (navigation as any).navigate('Settings', { screen: 'ManageCategories' })}
         >
           <View style={styles.settingInfo}>
             <Text style={styles.settingTitle}>Manage Custom Categories</Text>

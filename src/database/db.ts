@@ -194,3 +194,15 @@ export const logIncident = (
 export const updateCategoryWeight = (categoryId: number, newPoints: number) => {
   db.runSync('UPDATE categories SET default_points = ? WHERE id = ?', [newPoints, categoryId]);
 };
+
+export const addCustomCategory = (name: string, emoji: string, points: number, isPositive: boolean) => {
+  db.runSync(
+    'INSERT INTO categories (name, emoji, default_points, is_positive, is_custom) VALUES (?, ?, ?, ?, 1)',
+    [name, emoji, points, isPositive ? 1 : 0]
+  );
+};
+
+export const deleteCategory = (categoryId: number) => {
+  db.runSync('DELETE FROM incidents WHERE category_id = ?', [categoryId]);
+  db.runSync('DELETE FROM categories WHERE id = ?', [categoryId]);
+};

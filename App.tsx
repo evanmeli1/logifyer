@@ -10,6 +10,7 @@ import LogIncidentScreen from './src/screens/LogIncidentScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import CategoryWeightsScreen from './src/screens/CategoryWeightsScreen';
 import GlobalSettingsScreen from './src/screens/GlobalSettingsScreen';
+import ManageCategoriesScreen from './src/screens/ManageCategoriesScreen';
 
 
 const Tab = createBottomTabNavigator();
@@ -71,6 +72,11 @@ function SettingsStack() {
         name="GlobalSettings" 
         component={GlobalSettingsScreen}
         options={{ title: 'Global Settings' }}
+      />
+      <Stack.Screen 
+        name="ManageCategories" 
+        component={ManageCategoriesScreen}
+        options={{ title: 'Manage Categories' }}
       />
     </Stack.Navigator>
   );
