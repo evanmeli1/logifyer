@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { getAllPeople, getAllCategories, logIncident } from '../database/db';
+import { getAllPeople, getAllCategories, logIncident, getSettings } from '../database/db';
 import { Person, Category } from '../types';
+import { useFocusEffect } from '@react-navigation/native';
+
+
 
 export default function LogIncidentScreen({ route }: any) {
+  const [majorMultiplier, setMajorMultiplier] = useState(3);
   const navigation = useNavigation();
   const preSelectedPersonId = route.params?.personId;
 
@@ -14,7 +18,22 @@ export default function LogIncidentScreen({ route }: any) {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isMajor, setIsMajor] = useState(false);
   const [note, setNote] = useState('');
+  const loadData = () => {
+    const peopleData = getAllPeople() as Person[];
+    const categoriesData = getAllCategories() as Category[];
+    const settingsData: any = getSettings();
+    setPeople(peopleData);
+    setCategories(categoriesData);
+    setMajorMultiplier(settingsData?.major_multiplier || 3);
+  };
 
+useFocusEffect(
+    React.useCallback(() => {
+        loadData();
+    }, [])
+);
+
+  
   useEffect(() => {
     const peopleData = getAllPeople() as Person[];
     const categoriesData = getAllCategories() as Category[];
@@ -134,13 +153,13 @@ export default function LogIncidentScreen({ route }: any) {
               {isMajor && <Text style={styles.checkmark}>✓</Text>}
             </View>
             <View style={styles.majorToggleText}>
-              <Text style={styles.majorToggleTitle}>Major incident (3x points)</Text>
+              <Text style={styles.majorToggleTitle}>Major incident ({majorMultiplier}x points)</Text>
               <Text style={styles.majorToggleSubtitle}>
                 {isMajor 
-                  ? `Will count as ${selectedCategory.default_points * 3} points`
-                  : `Currently ${selectedCategory.default_points} points`
+                    ? `Will count as ${selectedCategory.default_points * majorMultiplier} points`
+                    : `Currently ${selectedCategory.default_points} points`
                 }
-              </Text>
+               </Text>
             </View>
           </TouchableOpacity>
         </View>

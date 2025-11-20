@@ -41,6 +41,33 @@ export const initDatabase = () => {
   console.log('Database tables created');
 };
 
+export const initSettings = () => {
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      major_multiplier INTEGER DEFAULT 3,
+      time_decay_months INTEGER DEFAULT 6,
+      recency_boost_enabled INTEGER DEFAULT 1
+    );
+  `);
+  
+  const existing = db.getFirstSync('SELECT * FROM settings WHERE id = 1');
+  if (!existing) {
+    db.runSync('INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, 3, 6, 1)');
+  }
+};
+
+export const getSettings = () => {
+  return db.getFirstSync('SELECT * FROM settings WHERE id = 1');
+};
+
+export const updateSettings = (majorMultiplier: number, timeDecayMonths: number, recencyBoostEnabled: boolean) => {
+  db.runSync(
+    'UPDATE settings SET major_multiplier = ?, time_decay_months = ?, recency_boost_enabled = ? WHERE id = 1',
+    [majorMultiplier, timeDecayMonths, recencyBoostEnabled ? 1 : 0]
+  );
+};
+
 export const seedCategories = () => {
   const count = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM categories WHERE is_custom = 0');
   
@@ -86,11 +113,42 @@ export const getAllCategories = () => {
 };
 
 export const getPersonScore = (personId: number) => {
-  const result = db.getFirstSync<{ total: number }>(
-    'SELECT COALESCE(SUM(points), 0) as total FROM incidents WHERE person_id = ?',
+  const settings: any = getSettings();
+  const majorMultiplier = settings?.major_multiplier || 3;
+  const timeDecayMonths = settings?.time_decay_months || 6;
+  const recencyBoostEnabled = settings?.recency_boost_enabled === 1;
+
+  const incidents = db.getAllSync(
+    'SELECT points, is_major, timestamp FROM incidents WHERE person_id = ?',
     [personId]
-  );
-  return result?.total || 0;
+  ) as any[];
+
+  let totalScore = 0;
+  const now = new Date();
+
+  incidents.forEach((incident) => {
+    let points = incident.points;
+    const incidentDate = new Date(incident.timestamp);
+    const monthsOld = (now.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+    const daysOld = (now.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (incident.is_major === 1) {
+      points = points;
+    }
+
+    if (recencyBoostEnabled && daysOld <= 30) {
+      points = points * 1.5;
+    }
+
+    if (timeDecayMonths > 0 && monthsOld > timeDecayMonths) {
+      const decayFactor = Math.max(0.25, 1 - ((monthsOld - timeDecayMonths) / timeDecayMonths) * 0.75);
+      points = points * decayFactor;
+    }
+
+    totalScore += points;
+  });
+
+  return Math.round(totalScore);
 };
 
 export const deletePerson = (personId: number) => {
@@ -123,9 +181,16 @@ export const logIncident = (
   isMajor: boolean,
   note?: string
 ) => {
-  const finalPoints = isMajor ? points * 3 : points;
+  const settings: any = getSettings();
+  const majorMultiplier = settings?.major_multiplier || 3;
+  const finalPoints = isMajor ? points * majorMultiplier : points;
+  
   db.runSync(
     'INSERT INTO incidents (person_id, category_id, points, is_major, note) VALUES (?, ?, ?, ?, ?)',
     [personId, categoryId, finalPoints, isMajor ? 1 : 0, note || null]
   );
+};
+
+export const updateCategoryWeight = (categoryId: number, newPoints: number) => {
+  db.runSync('UPDATE categories SET default_points = ? WHERE id = ?', [newPoints, categoryId]);
 };
