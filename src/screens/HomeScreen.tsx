@@ -27,8 +27,9 @@ export default function HomeScreen() {
   const getHealthGrade = (score: number) => {
     if (score >= 80) return { grade: 'A', color: '#4CAF50' };
     if (score >= 50) return { grade: 'B', color: '#8BC34A' };
-    if (score >= 0) return { grade: 'C', color: '#FFC107' };
-    if (score >= -49) return { grade: 'D', color: '#FF9800' };
+    if (score >= 1) return { grade: 'C', color: '#FFC107' };
+    if (score === 0) return { grade: 'N/A', color: '#999' };
+    if (score >= -50) return { grade: 'D', color: '#FF9800' };
     return { grade: 'F', color: '#F44336' };
   };
 

@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import Slider from '@react-native-community/slider';
 import { getAllCategories, updateCategoryWeight } from '../database/db';
 import { Category } from '../types';
+import { useNavigation } from '@react-navigation/native';
 
 export default function CategoryWeightsScreen() {
+  const navigation = useNavigation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [weights, setWeights] = useState<{ [key: number]: number }>({});
 
@@ -25,23 +27,39 @@ export default function CategoryWeightsScreen() {
 
   const resetToDefaults = () => {
     Alert.alert(
-      'Reset to Defaults',
-      'Reset all category weights to default values?',
-      [
+        'Reset to Defaults',
+        'Reset all category weights to default values?',
+        [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
-          onPress: () => {
-            const defaultWeights: { [key: number]: number } = {};
+            text: 'Reset',
+            onPress: () => {
+            const defaultValues: any = {
+                'Cancelled plans': -3,
+                'Lied/deceived': -8,
+                'Disrespected you': -8,
+                'Always late': -1,
+                'Borrowed money unpaid': -5,
+                'Only reaches out needing something': -3,
+                'Showed up when needed': 8,
+                'Actually listened': 5,
+                'Had your back': 8,
+                'Supported you': 5,
+            };
+            
+            const newWeights: { [key: number]: number } = {};
             categories.forEach(cat => {
-              defaultWeights[cat.id] = cat.default_points;
+                const defaultValue = defaultValues[cat.name] || cat.default_points;
+                newWeights[cat.id] = defaultValue;
+                updateCategoryWeight(cat.id, defaultValue);
             });
-            setWeights(defaultWeights);
-          },
+            setWeights(newWeights);
+            Alert.alert('Success', 'Reset to default values!');
+            },
         },
-      ]
+        ]
     );
-  };
+    };
 
   const negativeCategories = categories.filter(c => c.is_positive === 0);
   const positiveCategories = categories.filter(c => c.is_positive === 1);
@@ -113,7 +131,9 @@ export default function CategoryWeightsScreen() {
                 Object.entries(weights).forEach(([categoryId, points]) => {
                     updateCategoryWeight(Number(categoryId), points);
                 });
-                Alert.alert('Success', 'Category weights updated!');
+                Alert.alert('Success', 'Category weights updated!', [
+                    { text: 'OK', onPress: () => navigation.goBack() }
+                ]);
                 }}
         >
           <Text style={styles.saveButtonText}>Save Changes</Text>

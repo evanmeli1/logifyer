@@ -5,13 +5,19 @@ const db = SQLite.openDatabaseSync('logifyer.db');
 export const initDatabase = () => {
   db.execSync(`
     CREATE TABLE IF NOT EXISTS people (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      photo_uri TEXT,
-      relationship_type TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        photo_uri TEXT,
+        relationship_type TEXT NOT NULL,
+        archived INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+    try {
+        db.execSync(`ALTER TABLE people ADD COLUMN archived INTEGER DEFAULT 0;`);
+    } catch (e) {
+    
+    }
 
   db.execSync(`
     CREATE TABLE IF NOT EXISTS categories (
@@ -73,16 +79,16 @@ export const seedCategories = () => {
   
   if (count?.count === 0) {
     const defaults = [
-      { name: 'Cancelled plans', emoji: '🚫', points: -5, positive: 0 },
-      { name: 'Lied/deceived', emoji: '🤥', points: -10, positive: 0 },
-      { name: 'Disrespected you', emoji: '😤', points: -10, positive: 0 },
-      { name: 'Always late', emoji: '⏰', points: -2, positive: 0 },
-      { name: 'Borrowed money unpaid', emoji: '💸', points: -5, positive: 0 },
-      { name: 'Only reaches out needing something', emoji: '🙄', points: -5, positive: 0 },
-      { name: 'Showed up when needed', emoji: '✅', points: 10, positive: 1 },
-      { name: 'Actually listened', emoji: '👂', points: 5, positive: 1 },
-      { name: 'Had your back', emoji: '🤝', points: 10, positive: 1 },
-      { name: 'Supported you', emoji: '💪', points: 5, positive: 1 },
+        { name: 'Cancelled plans', emoji: '🚫', points: -3, positive: 0 },
+        { name: 'Lied/deceived', emoji: '🤥', points: -8, positive: 0 },
+        { name: 'Disrespected you', emoji: '😤', points: -8, positive: 0 },
+        { name: 'Always late', emoji: '⏰', points: -1, positive: 0 },
+        { name: 'Borrowed money unpaid', emoji: '💸', points: -5, positive: 0 },
+        { name: 'Only reaches out needing something', emoji: '🙄', points: -3, positive: 0 },
+        { name: 'Showed up when needed', emoji: '✅', points: 8, positive: 1 },
+        { name: 'Actually listened', emoji: '👂', points: 5, positive: 1 },
+        { name: 'Had your back', emoji: '🤝', points: 8, positive: 1 },
+        { name: 'Supported you', emoji: '💪', points: 5, positive: 1 },
     ];
 
     defaults.forEach(cat => {
@@ -123,7 +129,7 @@ export const getPersonScore = (personId: number) => {
     [personId]
   ) as any[];
 
-  let totalScore = 0;
+  let totalPoints = 0;
   const now = new Date();
 
   incidents.forEach((incident) => {
@@ -131,10 +137,6 @@ export const getPersonScore = (personId: number) => {
     const incidentDate = new Date(incident.timestamp);
     const monthsOld = (now.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
     const daysOld = (now.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24);
-
-    if (incident.is_major === 1) {
-      points = points;
-    }
 
     if (recencyBoostEnabled && daysOld <= 30) {
       points = points * 1.5;
@@ -145,10 +147,11 @@ export const getPersonScore = (personId: number) => {
       points = points * decayFactor;
     }
 
-    totalScore += points;
+    totalPoints += points;
   });
 
-  return Math.round(totalScore);
+  const finalScore = 100 + Math.round(totalPoints);
+  return Math.max(0, Math.min(100, finalScore));
 };
 
 export const deletePerson = (personId: number) => {
@@ -186,8 +189,8 @@ export const logIncident = (
   const finalPoints = isMajor ? points * majorMultiplier : points;
   
   db.runSync(
-    'INSERT INTO incidents (person_id, category_id, points, is_major, note) VALUES (?, ?, ?, ?, ?)',
-    [personId, categoryId, finalPoints, isMajor ? 1 : 0, note || null]
+    'INSERT INTO incidents (person_id, category_id, points, is_major, note, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
+    [personId, categoryId, finalPoints, isMajor ? 1 : 0, note || null, new Date().toISOString()]
   );
 };
 
@@ -206,3 +209,8 @@ export const deleteCategory = (categoryId: number) => {
   db.runSync('DELETE FROM incidents WHERE category_id = ?', [categoryId]);
   db.runSync('DELETE FROM categories WHERE id = ?', [categoryId]);
 };
+
+export const resetPersonScore = (personId: number) => {
+  db.runSync('DELETE FROM incidents WHERE person_id = ?', [personId]);
+};
+

@@ -16,6 +16,7 @@ import ManageCategoriesScreen from './src/screens/ManageCategoriesScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+
 function HomeStack() {
   return (
     <Stack.Navigator>

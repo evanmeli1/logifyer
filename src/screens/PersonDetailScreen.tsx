@@ -1,15 +1,18 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident } from '../database/db';
+import { getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson, resetPersonScore } from '../database/db';
 import { Person } from '../types';
 
 export default function PersonDetailScreen({ route }: any) {
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIncidents, setSelectedIncidents] = useState<number[]>([]);  
   const { personId } = route.params;
   const navigation = useNavigation();
   const [person, setPerson] = useState<Person | null>(null);
   const [score, setScore] = useState(0);
   const [incidents, setIncidents] = useState<any[]>([]);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const loadData = useCallback(() => {
     const personData = getPersonById(personId) as Person;
@@ -27,11 +30,65 @@ export default function PersonDetailScreen({ route }: any) {
     }, [loadData])
   );
 
+  const handleResetScore = () => {
+    Alert.alert(
+      'Reset Score',
+      `Delete all incidents for ${person?.name}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetPersonScore(personId);
+            loadData();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Person',
+      `Permanently delete ${person?.name} and all their incidents? Type DELETE to confirm.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.prompt(
+              'Confirm Delete',
+              'Type DELETE to confirm',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: (text?: string) => {
+                    if (text === 'DELETE') {
+                      deletePerson(personId);
+                      navigation.goBack();
+                    } else {
+                      Alert.alert('Error', 'You must type DELETE to confirm');
+                    }
+                  },
+                },
+              ],
+              'plain-text'
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const getHealthGrade = (score: number) => {
     if (score >= 80) return { grade: 'A', color: '#4CAF50' };
-    if (score >= 50) return { grade: 'B', color: '#8BC34A' };
-    if (score >= 0) return { grade: 'C', color: '#FFC107' };
-    if (score >= -49) return { grade: 'D', color: '#FF9800' };
+    if (score >= 60) return { grade: 'B', color: '#8BC34A' };
+    if (score >= 40) return { grade: 'C', color: '#FFC107' };
+    if (score >= 20) return { grade: 'D', color: '#FF9800' };
     return { grade: 'F', color: '#F44336' };
   };
 
@@ -61,6 +118,7 @@ export default function PersonDetailScreen({ route }: any) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
+    if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 0) return 'Today';
@@ -69,31 +127,76 @@ export default function PersonDetailScreen({ route }: any) {
     return date.toLocaleDateString();
   };
 
+  const toggleSelection = (incidentId: number) => {
+    if (selectedIncidents.includes(incidentId)) {
+      setSelectedIncidents(selectedIncidents.filter(id => id !== incidentId));
+    } else {
+      setSelectedIncidents([...selectedIncidents, incidentId]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    Alert.alert(
+      'Delete Incidents',
+      `Delete ${selectedIncidents.length} incidents?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            selectedIncidents.forEach(id => deleteIncident(id));
+            setSelectedIncidents([]);
+            setSelectionMode(false);
+            loadData();
+          },
+        },
+      ]
+    );
+  };
+
   const renderIncident = ({ item }: any) => {
     const isMajor = item.is_major === 1;
     const isPositive = item.points > 0;
+    const isSelected = selectedIncidents.includes(item.id);
 
     return (
       <TouchableOpacity
-        style={styles.incidentCard}
-        onLongPress={() => handleDeleteIncident(item.id)}
+        style={[styles.incidentCard, isSelected && styles.incidentCardSelected]}
+        onPress={() => {
+          if (selectionMode) {
+            toggleSelection(item.id);
+          }
+        }}
+        onLongPress={() => {
+          if (!selectionMode) {
+            handleDeleteIncident(item.id);
+          }
+        }}
       >
-        <View style={styles.incidentHeader}>
-          <View style={styles.incidentTitleRow}>
-            <Text style={styles.incidentEmoji}>{item.category_emoji}</Text>
-            <Text style={styles.incidentName}>{item.category_name}</Text>
-            {isMajor && (
-              <View style={styles.majorBadge}>
-                <Text style={styles.majorBadgeText}>MAJOR</Text>
-              </View>
-            )}
+        {selectionMode && (
+          <View style={styles.checkbox}>
+            {isSelected && <Text style={styles.checkmark}>✓</Text>}
           </View>
-          <Text style={[styles.incidentPoints, { color: isPositive ? '#4CAF50' : '#F44336' }]}>
-            {item.points > 0 ? '+' : ''}{item.points}
-          </Text>
+        )}
+        <View style={styles.incidentContent}>
+          <View style={styles.incidentHeader}>
+            <View style={styles.incidentTitleRow}>
+              <Text style={styles.incidentEmoji}>{item.category_emoji}</Text>
+              <Text style={styles.incidentName}>{item.category_name}</Text>
+              {isMajor && (
+                <View style={styles.majorBadge}>
+                  <Text style={styles.majorBadgeText}>MAJOR</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.incidentPoints, { color: isPositive ? '#4CAF50' : '#F44336' }]}>
+              {item.points > 0 ? '+' : ''}{item.points}
+            </Text>
+          </View>
+          {item.note && <Text style={styles.incidentNote}>{item.note}</Text>}
+          <Text style={styles.incidentTime}>{formatDate(item.timestamp)}</Text>
         </View>
-        {item.note && <Text style={styles.incidentNote}>{item.note}</Text>}
-        <Text style={styles.incidentTime}>{formatDate(item.timestamp)}</Text>
       </TouchableOpacity>
     );
   };
@@ -121,7 +224,27 @@ export default function PersonDetailScreen({ route }: any) {
             <Text style={styles.gradeText}>{health.grade}</Text>
           </View>
         </View>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setMenuVisible(!menuVisible)}
+        >
+          <Text style={styles.menuButtonText}>⋮</Text>
+        </TouchableOpacity>
       </View>
+
+      {menuVisible && (
+        <View style={styles.menu}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); setSelectionMode(true); }}>
+            <Text style={styles.menuItemText}>☑️ Select Multiple</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleResetScore(); }}>
+            <Text style={styles.menuItemText}>🔄 Reset Score</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDelete(); }}>
+            <Text style={[styles.menuItemText, styles.menuItemDanger]}>🗑️ Delete Person</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
@@ -141,6 +264,60 @@ export default function PersonDetailScreen({ route }: any) {
           <Text style={styles.statLabel}>Positive</Text>
         </View>
       </View>
+      
+      <View style={styles.patternsSection}>
+        <Text style={styles.patternsTitle}>Patterns</Text>
+        
+        {incidents.length > 0 && (
+          <>
+            <View style={styles.patternRow}>
+              <Text style={styles.patternLabel}>Biggest Issue:</Text>
+              <Text style={styles.patternValue}>
+                {(() => {
+                  const negativeIncidents = incidents.filter(i => i.points < 0);
+                  if (negativeIncidents.length === 0) return 'None';
+                  const counts: any = {};
+                  negativeIncidents.forEach(i => {
+                    counts[i.category_name] = (counts[i.category_name] || 0) + 1;
+                  });
+                  const biggest = Object.entries(counts).sort((a: any, b: any) => b[1] - a[1])[0];
+                  return `${biggest[0]} (${biggest[1]}x)`;
+                })()}
+              </Text>
+            </View>
+
+            <View style={styles.patternRow}>
+              <Text style={styles.patternLabel}>Trend:</Text>
+              <Text style={styles.patternValue}>
+                {(() => {
+                  if (incidents.length < 2) return '—';
+                  const recent = incidents.slice(0, Math.ceil(incidents.length / 2));
+                  const older = incidents.slice(Math.ceil(incidents.length / 2));
+                  const recentAvg = recent.reduce((sum, i) => sum + i.points, 0) / recent.length;
+                  const olderAvg = older.reduce((sum, i) => sum + i.points, 0) / older.length;
+                  if (recentAvg > olderAvg + 2) return '📈 Improving';
+                  if (recentAvg < olderAvg - 2) return '📉 Declining';
+                  return '→ Stable';
+                })()}
+              </Text>
+            </View>
+
+            <View style={styles.patternRow}>
+              <Text style={styles.patternLabel}>Last Interaction:</Text>
+              <Text style={styles.patternValue}>
+                {formatDate(incidents[0].timestamp)}
+              </Text>
+            </View>
+
+            <View style={styles.patternRow}>
+              <Text style={styles.patternLabel}>Positive Rate:</Text>
+              <Text style={styles.patternValue}>
+                {Math.round((incidents.filter(i => i.points > 0).length / incidents.length) * 100)}%
+              </Text>
+            </View>
+          </>
+        )}
+      </View>
 
       {incidents.length === 0 ? (
         <View style={styles.emptyState}>
@@ -157,15 +334,37 @@ export default function PersonDetailScreen({ route }: any) {
         />
       )}
 
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => (navigation as any).navigate('Home', { 
-         screen: 'LogIncident', 
-         params: { personId } 
-        })}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {selectionMode ? (
+        <View style={styles.selectionToolbar}>
+          <TouchableOpacity
+            style={styles.toolbarButton}
+            onPress={() => {
+              setSelectionMode(false);
+              setSelectedIncidents([]);
+            }}
+          >
+            <Text style={styles.toolbarButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.selectedCount}>{selectedIncidents.length} selected</Text>
+          <TouchableOpacity
+            style={[styles.toolbarButton, styles.deleteButton]}
+            onPress={handleBulkDelete}
+            disabled={selectedIncidents.length === 0}
+          >
+            <Text style={[styles.toolbarButtonText, styles.deleteButtonText]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => (navigation as any).navigate('Home', { 
+            screen: 'LogIncident', 
+            params: { personId } 
+          })}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -236,6 +435,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 80,
   },
   incidentCard: {
     backgroundColor: 'white',
@@ -247,6 +447,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  incidentCardSelected: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 2,
+    borderColor: '#2196F3',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    borderRadius: 4,
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkmark: {
+    color: '#2196F3',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  incidentContent: {
+    flex: 1,
   },
   incidentHeader: {
     flexDirection: 'row',
@@ -332,5 +557,102 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 32,
     fontWeight: '300',
+  },
+  menuButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  menuButtonText: {
+    fontSize: 24,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  menu: {
+    position: 'absolute',
+    top: 80,
+    right: 16,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  menuItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemText: {
+    fontSize: 16,
+  },
+  menuItemDanger: {
+    color: '#F44336',
+  },
+  patternsSection: {
+    backgroundColor: 'white',
+    padding: 16,
+    marginBottom: 12,
+  },
+  patternsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  patternRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  patternLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  patternValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectionToolbar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+  },
+  toolbarButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  deleteButton: {
+    backgroundColor: '#F44336',
+  },
+  toolbarButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  deleteButtonText: {
+    color: 'white',
+  },
+  selectedCount: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
