@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import { syncLocalToCloud, syncCloudToLocal, clearLocalData } from '../services/syncService';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -51,59 +52,80 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-        console.log('Starting Google sign-in...');
-        
-        const redirectUrl = 'logifyer://';
-        console.log('Redirect URL:', redirectUrl);
+      console.log('Starting Google sign-in...');
+      
+      const redirectUrl = 'logifyer://';
+      console.log('Redirect URL:', redirectUrl);
 
-        const { data, error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: redirectUrl,
-            skipBrowserRedirect: false,
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
         },
-        });
+      });
 
-        if (error) {
+      if (error) {
         console.error('Supabase auth error:', error);
         throw error;
-        }
+      }
 
-        console.log('Auth data:', data);
+      console.log('Auth data:', data);
 
-        if (data?.url) {
+      if (data?.url) {
         console.log('Opening browser to:', data.url);
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
         console.log('Browser result:', result);
 
         if (result.type === 'success') {
-            const url = result.url;
-            console.log('Success URL:', url);
-            
-            // Extract tokens from URL
-            const params = new URLSearchParams(url.split('#')[1]);
-            const access_token = params.get('access_token');
-            const refresh_token = params.get('refresh_token');
+          const url = result.url;
+          console.log('Success URL:', url);
+          
+          // Extract tokens from URL
+          const params = new URLSearchParams(url.split('#')[1]);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
 
-            if (access_token && refresh_token) {
+          if (access_token && refresh_token) {
             await supabase.auth.setSession({
-                access_token,
-                refresh_token,
+              access_token,
+              refresh_token,
             });
+            
+            // Get user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              // Check if user has cloud data
+              const { data: cloudPeople } = await supabase
+                .from('people')
+                .select('id')
+                .eq('user_id', user.id)
+                .limit(1);
+
+              if (cloudPeople && cloudPeople.length > 0) {
+                // User has cloud data - download it
+                console.log('📥 User has cloud data - syncing to local');
+                await syncCloudToLocal(user.id);
+              } else {
+                // First time sign-in - upload local data
+                console.log('📤 First time sign-in - syncing local to cloud');
+                await syncLocalToCloud(user.id);
+              }
             }
+          }
         }
-        }
+      }
     } catch (error) {
-        console.error('Google sign-in error:', error);
-        throw error;
+      console.error('Google sign-in error:', error);
+      throw error;
     }
-    };
+  };
 
   const signInWithApple = async () => {
     try {
       console.log('Starting Apple sign-in...');
       
-      const redirectUrl = Linking.createURL('/');
+      const redirectUrl = 'logifyer://';
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
@@ -129,6 +151,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               access_token,
               refresh_token,
             });
+
+            // Get user and sync
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: cloudPeople } = await supabase
+                .from('people')
+                .select('id')
+                .eq('user_id', user.id)
+                .limit(1);
+
+              if (cloudPeople && cloudPeople.length > 0) {
+                console.log('📥 User has cloud data - syncing to local');
+                await syncCloudToLocal(user.id);
+              } else {
+                console.log('📤 First time sign-in - syncing local to cloud');
+                await syncLocalToCloud(user.id);
+              }
+            }
           }
         }
       }
@@ -141,6 +181,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    
+    // Clear local data when signing out
+    clearLocalData();
   };
 
   return (
