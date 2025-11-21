@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getSettings } from '../database/db';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const { user, signOut } = useAuth();
   const [settings, setSettings] = React.useState<any>(null);
 
   useFocusEffect(
@@ -14,6 +16,15 @@ export default function SettingsScreen() {
       setSettings(settingsData);
     }, [])
   );
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      Alert.alert('Success', 'Signed out successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
 
   const handleDeleteAllData = () => {
     Alert.alert(
@@ -34,6 +45,34 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* Account Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        {user ? (
+          <>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingTitle}>Email</Text>
+                <Text style={styles.settingSubtitle}>{user.email}</Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={[styles.settingRow, styles.dangerRow]}
+              onPress={handleSignOut}
+            >
+              <Text style={[styles.settingTitle, styles.dangerText]}>Sign Out</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity 
+            style={styles.signInButton}
+            onPress={() => (navigation as any).navigate('Settings', { screen: 'SignIn' })}
+          >
+            <Text style={styles.signInButtonText}>Sign In to Sync & Unlock Premium</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Scoring</Text>
         
@@ -49,9 +88,9 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-            style={styles.settingRow}
-            onPress={() => (navigation as any).navigate('Settings', { screen: 'GlobalSettings' })}
-          >
+          style={styles.settingRow}
+          onPress={() => (navigation as any).navigate('Settings', { screen: 'GlobalSettings' })}
+        >
           <View style={styles.settingInfo}>
             <Text style={styles.settingTitle}>Major Incident Multiplier</Text>
             <Text style={styles.settingSubtitle}>Currently {settings?.major_multiplier || 3}x</Text>
@@ -191,6 +230,19 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: '#F44336',
+  },
+  signInButton: {
+    backgroundColor: '#2196F3',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   aboutRow: {
     flexDirection: 'row',

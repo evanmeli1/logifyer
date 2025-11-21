@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson, resetPersonScore } from '../database/db';
 import { Person } from '../types';
+import { generatePersonInsights, AIInsightsResult } from '../services/ai';
 
 export default function PersonDetailScreen({ route }: any) {
   const [selectionMode, setSelectionMode] = useState(false);
@@ -13,6 +14,8 @@ export default function PersonDetailScreen({ route }: any) {
   const [score, setScore] = useState(0);
   const [incidents, setIncidents] = useState<any[]>([]);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [aiInsights, setAiInsights] = useState<AIInsightsResult | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   const loadData = useCallback(() => {
     const personData = getPersonById(personId) as Person;
@@ -82,6 +85,30 @@ export default function PersonDetailScreen({ route }: any) {
         },
       ]
     );
+  };
+
+  const handleGenerateInsights = async (forceRegenerate: boolean = false) => {
+    if (incidents.length === 0) {
+      Alert.alert('No Data', 'Add some incidents first to generate insights.');
+      return;
+    }
+
+    setLoadingInsights(true);
+    try {
+      const insights = await generatePersonInsights(
+        personId,
+        person!.name,
+        incidents,
+        score,
+        forceRegenerate
+      );
+      setAiInsights(insights);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate insights. Check your API key and internet connection.');
+      console.error(error);
+    } finally {
+      setLoadingInsights(false);
+    }
   };
 
   const getHealthGrade = (score: number) => {
@@ -316,6 +343,47 @@ export default function PersonDetailScreen({ route }: any) {
               </Text>
             </View>
           </>
+        )}
+      </View>
+
+      <View style={styles.aiSection}>
+        <View style={styles.aiSectionHeader}>
+          <Text style={styles.aiSectionTitle}>🤖 AI Insights</Text>
+          <View style={styles.premiumBadge}>
+            <Text style={styles.premiumBadgeText}>PREMIUM</Text>
+          </View>
+        </View>
+        
+        {!aiInsights ? (
+          <TouchableOpacity 
+            style={styles.generateButton}
+            onPress={() => handleGenerateInsights(false)}
+            disabled={loadingInsights}
+          >
+            {loadingInsights ? (
+              <Text style={styles.generateButtonText}>Analyzing...</Text>
+            ) : (
+              <Text style={styles.generateButtonText}>Generate AI Insights</Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.insightsBox}>
+            <View style={styles.insightsHeader}>
+              <Text style={styles.insightsTimestamp}>
+                {aiInsights.isCached ? '📦 Cached' : '✨ Fresh'} • {aiInsights.generatedAt}
+              </Text>
+            </View>
+            <Text style={styles.insightsText}>{aiInsights.content}</Text>
+            <TouchableOpacity 
+              style={styles.regenerateButton}
+              onPress={() => handleGenerateInsights(true)}
+              disabled={loadingInsights}
+            >
+              <Text style={styles.regenerateButtonText}>
+                {loadingInsights ? 'Analyzing...' : '🔄 Regenerate'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -654,5 +722,71 @@ const styles = StyleSheet.create({
   selectedCount: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  aiSection: {
+    backgroundColor: 'white',
+    padding: 16,
+    marginBottom: 12,
+  },
+  aiSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  aiSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  premiumBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  premiumBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  generateButton: {
+    backgroundColor: '#2196F3',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  generateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  insightsBox: {
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  insightsText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#333',
+    marginBottom: 12,
+  },
+  regenerateButton: {
+    alignSelf: 'flex-start',
+  },
+  regenerateButtonText: {
+    color: '#2196F3',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  insightsHeader: {
+    marginBottom: 8,
+  },
+  insightsTimestamp: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });

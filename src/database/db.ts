@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { initAICacheTable } from './aiCache';
 
 const db = SQLite.openDatabaseSync('logifyer.db');
 
@@ -44,8 +45,10 @@ export const initDatabase = () => {
     );
   `);
 
-  console.log('Database tables created');
-};
+  initAICacheTable(db);
+
+    console.log('Database tables created');
+  };
 
 export const initSettings = () => {
   db.execSync(`

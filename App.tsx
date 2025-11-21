@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { initDatabase, seedCategories, initSettings } from './src/database/db';import HomeScreen from './src/screens/HomeScreen';
+import { initDatabase, seedCategories, initSettings } from './src/database/db';
+import HomeScreen from './src/screens/HomeScreen';
 import AddPersonScreen from './src/screens/AddPersonScreen';
 import PersonDetailScreen from './src/screens/PersonDetailScreen';
 import LogIncidentScreen from './src/screens/LogIncidentScreen';
@@ -11,11 +12,12 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import CategoryWeightsScreen from './src/screens/CategoryWeightsScreen';
 import GlobalSettingsScreen from './src/screens/GlobalSettingsScreen';
 import ManageCategoriesScreen from './src/screens/ManageCategoriesScreen';
-
+import { supabase } from './src/services/supabase';
+import { AuthProvider } from './src/contexts/AuthContext';
+import SignInScreen from './src/screens/SignInScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
 
 function HomeStack() {
   return (
@@ -65,6 +67,11 @@ function SettingsStack() {
         options={{ title: 'Settings' }}
       />
       <Stack.Screen 
+        name="SignIn" 
+        component={SignInScreen}
+        options={{ title: 'Sign In' }}
+      />
+      <Stack.Screen 
         name="CategoryWeights" 
         component={CategoryWeightsScreen}
         options={{ title: 'Category Weights' }}
@@ -83,20 +90,31 @@ function SettingsStack() {
   );
 }
 
-
 export default function App() {
   const [dbInitialized, setDbInitialized] = useState(false);
 
   useEffect(() => {
-    try {
-      initDatabase();
-      initSettings();
-      seedCategories();
-      console.log('Database ready ✅');
-      setDbInitialized(true);
-    } catch (error) {
-      console.error('Database error:', error);
-    }
+    const testSupabase = async () => {
+      try {
+        initDatabase();
+        initSettings();
+        seedCategories();
+        console.log('Database ready ✅');
+        
+        const { data, error } = await supabase.from('profiles').select('count');
+        if (error) {
+          console.log('⚠️ Supabase connection issue:', error.message);
+        } else {
+          console.log('✅ Supabase connected!');
+        }
+        
+        setDbInitialized(true);
+      } catch (error) {
+        console.error('Database error:', error);
+      }
+    };
+    
+    testSupabase();
   }, []);
 
   if (!dbInitialized) {
@@ -109,24 +127,26 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Tab.Navigator>
-        <Tab.Screen 
-          name="Home" 
-          component={HomeStack}
-          options={{ headerShown: false }}
-        />
-        <Tab.Screen 
-          name="Log" 
-          component={LogStack}
-          options={{ headerShown: false }}
-        />
-        <Tab.Screen 
-          name="Settings" 
-          component={SettingsStack}
-          options={{ headerShown: false }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <AuthProvider>
+      <NavigationContainer>
+        <Tab.Navigator>
+          <Tab.Screen 
+            name="Home" 
+            component={HomeStack}
+            options={{ headerShown: false }}
+          />
+          <Tab.Screen 
+            name="Log" 
+            component={LogStack}
+            options={{ headerShown: false }}
+          />
+          <Tab.Screen 
+            name="Settings" 
+            component={SettingsStack}
+            options={{ headerShown: false }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </AuthProvider>
   );
 }
