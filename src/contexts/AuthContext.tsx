@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { syncLocalToCloud, syncCloudToLocal, clearLocalData } from '../services/syncService';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -122,61 +123,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithApple = async () => {
-    try {
-      console.log('Starting Apple sign-in...');
-      
-      const redirectUrl = 'logifyer://';
+  try {
+    console.log('Starting Apple native sign-in...');
+    
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: false,
-        },
-      });
+    console.log('Apple credential received');
 
-      if (error) throw error;
+    if (!credential.identityToken) {
+      throw new Error('No identity token received');
+    }
 
-      if (data?.url) {
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: credential.identityToken,
+    });
 
-        if (result.type === 'success') {
-          const url = result.url;
-          const params = new URLSearchParams(url.split('#')[1]);
-          const access_token = params.get('access_token');
-          const refresh_token = params.get('refresh_token');
+    if (error) {
+      console.error('Supabase Apple error:', error);
+      throw error;
+    }
 
-          if (access_token && refresh_token) {
-            await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
+    console.log('✅ Apple sign-in successful');
 
-            // Get user and sync
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              const { data: cloudPeople } = await supabase
-                .from('people')
-                .select('id')
-                .eq('user_id', user.id)
-                .limit(1);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: cloudPeople } = await supabase
+        .from('people')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
 
-              if (cloudPeople && cloudPeople.length > 0) {
-                console.log('📥 User has cloud data - syncing to local');
-                await syncCloudToLocal(user.id);
-              } else {
-                console.log('📤 First time sign-in - syncing local to cloud');
-                await syncLocalToCloud(user.id);
-              }
-            }
-          }
-        }
+      if (cloudPeople && cloudPeople.length > 0) {
+        console.log('📥 Syncing cloud to local');
+        await syncCloudToLocal(user.id);
+      } else {
+        console.log('📤 Syncing local to cloud');
+        await syncLocalToCloud(user.id);
       }
-    } catch (error) {
+    }
+  } catch (error: any) {
+    if (error.code === 'ERR_REQUEST_CANCELED') {
+      console.log('User canceled Apple sign-in');
+    } else {
       console.error('Apple sign-in error:', error);
       throw error;
     }
-  };
+  }
+};
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();

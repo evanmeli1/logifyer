@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.logifyer.app"
+      "bundleIdentifier": "com.logifyer.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +32,8 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication"
     ]
   }
 }
