@@ -12,9 +12,13 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import CategoryWeightsScreen from './src/screens/CategoryWeightsScreen';
 import GlobalSettingsScreen from './src/screens/GlobalSettingsScreen';
 import ManageCategoriesScreen from './src/screens/ManageCategoriesScreen';
+import StatsScreen from './src/screens/StatsScreen';
 import { supabase } from './src/services/supabase';
 import { AuthProvider } from './src/contexts/AuthContext';
 import SignInScreen from './src/screens/SignInScreen';
+import PaywallScreen from './src/screens/PaywallScreen';
+import { initializePurchases } from './src/services/purchases';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -86,6 +90,23 @@ function SettingsStack() {
         component={ManageCategoriesScreen}
         options={{ title: 'Manage Categories' }}
       />
+      <Stack.Screen 
+        name="Paywall" 
+        component={PaywallScreen}
+        options={{ title: 'Upgrade' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+function StatsStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="StatsMain" 
+        component={StatsScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -99,6 +120,13 @@ export default function App() {
         initDatabase();
         initSettings();
         seedCategories();
+        
+        try {
+          await initializePurchases();
+        } catch (error) {
+          console.log('⚠️ RevenueCat failed:', error);
+        }
+        
         console.log('Database ready ✅');
         
         const { data, error } = await supabase.from('profiles').select('count');
@@ -111,6 +139,7 @@ export default function App() {
         setDbInitialized(true);
       } catch (error) {
         console.error('Database error:', error);
+        setDbInitialized(true);
       }
     };
     
@@ -131,7 +160,7 @@ export default function App() {
       <NavigationContainer>
         <Tab.Navigator>
           <Tab.Screen 
-            name="Home" 
+            name="People" 
             component={HomeStack}
             options={{ headerShown: false }}
           />
@@ -141,8 +170,8 @@ export default function App() {
             options={{ headerShown: false }}
           />
           <Tab.Screen 
-            name="Settings" 
-            component={SettingsStack}
+            name="Stats" 
+            component={StatsStack}
             options={{ headerShown: false }}
           />
         </Tab.Navigator>

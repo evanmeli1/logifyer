@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { initAICacheTable } from './aiCache';
+import { Person } from '../types';
 
 const db = SQLite.openDatabaseSync('logifyer.db');
 
@@ -11,14 +12,18 @@ export const initDatabase = () => {
         photo_uri TEXT,
         relationship_type TEXT NOT NULL,
         archived INTEGER DEFAULT 0,
+        is_favorite INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
-    try {
-        db.execSync(`ALTER TABLE people ADD COLUMN archived INTEGER DEFAULT 0;`);
-    } catch (e) {
-    
-    }
+  
+  try {
+    db.execSync(`ALTER TABLE people ADD COLUMN archived INTEGER DEFAULT 0;`);
+  } catch (e) {}
+  
+  try {
+    db.execSync(`ALTER TABLE people ADD COLUMN is_favorite INTEGER DEFAULT 0;`);
+  } catch (e) {}
 
   db.execSync(`
     CREATE TABLE IF NOT EXISTS categories (
@@ -47,8 +52,8 @@ export const initDatabase = () => {
 
   initAICacheTable(db);
 
-    console.log('Database tables created');
-  };
+  console.log('Database tables created');
+};
 
 export const initSettings = () => {
   db.execSync(`
@@ -217,3 +222,8 @@ export const resetPersonScore = (personId: number) => {
   db.runSync('DELETE FROM incidents WHERE person_id = ?', [personId]);
 };
 
+export const toggleFavorite = (personId: number) => {
+  const person = db.getFirstSync<Person>('SELECT * FROM people WHERE id = ?', [personId]);
+  const newFavoriteStatus = person?.is_favorite ? 0 : 1;
+  db.runSync('UPDATE people SET is_favorite = ? WHERE id = ?', [newFavoriteStatus, personId]);
+};

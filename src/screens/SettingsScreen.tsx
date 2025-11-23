@@ -73,6 +73,22 @@ export default function SettingsScreen() {
         )}
       </View>
 
+      {/* Premium Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Premium</Text>
+        
+        <TouchableOpacity 
+          style={[styles.settingRow, styles.premiumRow]}
+          onPress={() => (navigation as any).navigate('Settings', { screen: 'Paywall' })}
+        >
+          <View style={styles.settingInfo}>
+            <Text style={[styles.settingTitle, styles.premiumText]}>⭐ Upgrade to Premium</Text>
+            <Text style={styles.settingSubtitle}>Unlock AI insights & unlimited categories</Text>
+          </View>
+          <Text style={styles.settingArrow}>›</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Scoring</Text>
         
@@ -259,5 +275,13 @@ const styles = StyleSheet.create({
   aboutValue: {
     fontSize: 16,
     color: '#666',
+  },
+  premiumRow: {
+  backgroundColor: '#FFF9E6',
+  borderBottomWidth: 0,
+  },
+  premiumText: {
+    color: '#6366F1',
+    fontWeight: '600',
   },
 });
