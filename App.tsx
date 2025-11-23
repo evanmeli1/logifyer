@@ -56,7 +56,7 @@ function LogStack() {
       <Stack.Screen 
         name="LogMain" 
         component={LogIncidentScreen}
-        options={{ title: 'Log Incident' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -68,7 +68,7 @@ function SettingsStack() {
       <Stack.Screen 
         name="SettingsMain" 
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="SignIn" 
@@ -108,6 +108,60 @@ function StatsStack() {
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
+  );
+}
+
+function TabNavigator() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: '#F43F5E',
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+        tabBarStyle: {
+          height: 80,
+          paddingBottom: 8,
+          paddingTop: 8,
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          backgroundColor: '#FFFFFF',
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="People" 
+        component={HomeStack}
+        options={{ 
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24 }}>{focused ? '👥' : '👤'}</Text>
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Log" 
+        component={LogStack}
+        options={{ 
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24 }}>{focused ? '✏️' : '📝'}</Text>
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Stats" 
+        component={StatsStack}
+        options={{ 
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 24 }}>{focused ? '📊' : '📈'}</Text>
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
@@ -158,23 +212,14 @@ export default function App() {
   return (
     <AuthProvider>
       <NavigationContainer>
-        <Tab.Navigator>
-          <Tab.Screen 
-            name="People" 
-            component={HomeStack}
-            options={{ headerShown: false }}
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainApp" component={TabNavigator} />
+          <Stack.Screen 
+            name="Settings" 
+            component={SettingsStack}
+            options={{ presentation: 'modal' }}
           />
-          <Tab.Screen 
-            name="Log" 
-            component={LogStack}
-            options={{ headerShown: false }}
-          />
-          <Tab.Screen 
-            name="Stats" 
-            component={StatsStack}
-            options={{ headerShown: false }}
-          />
-        </Tab.Navigator>
+        </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
   );
