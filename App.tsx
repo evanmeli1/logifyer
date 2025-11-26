@@ -20,6 +20,7 @@ import PaywallScreen from './src/screens/PaywallScreen';
 import { initializePurchases } from './src/services/purchases';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import LegalScreen from './src/screens/LegalScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -94,6 +95,11 @@ function SettingsStack() {
       <Stack.Screen 
         name="Paywall" 
         component={PaywallScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Legal" 
+        component={LegalScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

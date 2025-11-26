@@ -75,10 +75,36 @@ const FloatingShape = ({
 };
 
 const FEATURES = [
-  { icon: '🤖', title: 'AI Insights', description: 'Smart relationship analysis' },
-  { icon: '📊', title: 'Unlimited Categories', description: 'Create custom incident types' },
-  { icon: '☁️', title: 'Cloud Sync', description: 'Access across all devices' },
-  { icon: '📈', title: 'Advanced Stats', description: 'Deep analytics & trends' },
+  { 
+    icon: '🤖', 
+    title: 'AI Insights', 
+    description: 'Get personalized relationship advice powered by AI',
+  },
+  { 
+    icon: '🎨', 
+    title: 'Premium Themes', 
+    description: 'Unlock Purple, Emerald, Amber, and Sunset themes',
+  },
+  { 
+    icon: '📂', 
+    title: 'Unlimited Categories', 
+    description: 'Create as many custom incident types as you need',
+  },
+  { 
+    icon: '📈', 
+    title: 'Advanced Analytics', 
+    description: 'Deep stats, trends, and relationship patterns',
+  },
+  { 
+    icon: '☁️', 
+    title: 'Cloud Backup', 
+    description: 'Sync and access your data across all devices',
+  },
+  { 
+    icon: '🚀', 
+    title: 'Early Access', 
+    description: 'Be the first to try new features and updates',
+  },
 ];
 
 export default function PaywallScreen({ navigation }: any) {
@@ -97,9 +123,15 @@ export default function PaywallScreen({ navigation }: any) {
       const offerings = await Purchases.getOfferings();
       if (offerings.current?.availablePackages) {
         setPackages(offerings.current.availablePackages);
-        if (offerings.current.availablePackages.length > 0) {
-          setSelectedPackage(offerings.current.availablePackages[0].identifier);
-        }
+        const annualPkg = offerings.current.availablePackages.find(
+          p => p.identifier.toLowerCase().includes('annual') || 
+               p.identifier.toLowerCase().includes('yearly')
+        );
+        setSelectedPackage(
+          annualPkg?.identifier || 
+          offerings.current.availablePackages[0]?.identifier || 
+          null
+        );
       }
     } catch (error) {
       console.error('Error loading offerings:', error);
@@ -109,19 +141,28 @@ export default function PaywallScreen({ navigation }: any) {
   };
 
   const handlePurchase = async () => {
+    if (!selectedPackage) {
+      Alert.alert('Error', 'Please select a plan');
+      return;
+    }
+
     const pkg = packages.find(p => p.identifier === selectedPackage);
-    if (!pkg) return;
+    if (!pkg) {
+      Alert.alert('Error', 'Selected plan not found');
+      return;
+    }
 
     setPurchasing(true);
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (customerInfo.entitlements.active['premium']) {
-        Alert.alert('Success!', 'Welcome to Logifyer Premium!');
-        navigation.goBack();
+        Alert.alert('Welcome to Premium! 🎉', 'You now have access to all premium features.', [
+          { text: 'Let\'s Go!', onPress: () => navigation.goBack() }
+        ]);
       }
     } catch (error: any) {
       if (!error.userCancelled) {
-        Alert.alert('Error', 'Purchase failed. Please try again.');
+        Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
       }
     } finally {
       setPurchasing(false);
@@ -129,41 +170,44 @@ export default function PaywallScreen({ navigation }: any) {
   };
 
   const restorePurchases = async () => {
+    setPurchasing(true);
     try {
       const customerInfo = await Purchases.restorePurchases();
       if (customerInfo.entitlements.active['premium']) {
-        Alert.alert('Restored!', 'Your premium subscription has been restored.');
-        navigation.goBack();
+        Alert.alert('Welcome Back! 🎉', 'Your premium subscription has been restored.', [
+          { text: 'Let\'s Go!', onPress: () => navigation.goBack() }
+        ]);
       } else {
-        Alert.alert('No Subscription', 'No active subscription found.');
+        Alert.alert('No Subscription Found', 'We couldn\'t find an active subscription for your account.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to restore purchases.');
+      Alert.alert('Error', 'Failed to restore purchases. Please try again.');
+    } finally {
+      setPurchasing(false);
     }
+  };
+
+  const getSelectedPrice = () => {
+    const pkg = packages.find(p => p.identifier === selectedPackage);
+    return pkg?.product.priceString || '';
+  };
+
+  const isYearlySelected = () => {
+    return selectedPackage?.toLowerCase().includes('annual') || 
+           selectedPackage?.toLowerCase().includes('yearly');
   };
 
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading plans...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Warm Gradient Background */}
-      <LinearGradient
-        colors={[
-          theme.primary + '18',
-          theme.primaryLight + '12',
-          '#FFF5F5',
-          '#FFFFFF',
-        ]}
-        locations={[0, 0.25, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-
       {/* Floating Animated Shapes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <FloatingShape 
@@ -192,147 +236,158 @@ export default function PaywallScreen({ navigation }: any) {
         />
       </View>
 
-      {/* Close Button */}
-      <TouchableOpacity 
-        style={styles.closeButton}
-        onPress={() => navigation.goBack()}
+      {/* Header - Matching StatsScreen */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.header}
       >
-        <Text style={[styles.closeText, { color: theme.text }]}>✕</Text>
-      </TouchableOpacity>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Premium</Text>
+            <Text style={styles.headerSubtitle}>Get the full experience</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.closeText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Features Section */}
         <Animated.View 
           entering={FadeInDown.delay(100).duration(500)}
-          style={styles.header}
+          style={styles.featuresSection}
         >
-          <View style={[styles.premiumBadge, { backgroundColor: theme.primary + '15' }]}>
-            <Text style={styles.premiumIcon}>✨</Text>
-            <Text style={[styles.premiumText, { color: theme.primary }]}>PREMIUM</Text>
+          <View style={[styles.featuresCard, { backgroundColor: theme.card }]}>
+            {FEATURES.map((feature, index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.featureRow,
+                  index !== FEATURES.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.divider }
+                ]}
+              >
+                <View style={[styles.featureIcon, { backgroundColor: theme.primary + '12' }]}>
+                  <Text style={styles.featureEmoji}>{feature.icon}</Text>
+                </View>
+                <View style={styles.featureText}>
+                  <Text style={[styles.featureTitle, { color: theme.text }]}>{feature.title}</Text>
+                  <Text style={[styles.featureDescription, { color: theme.textMuted }]}>{feature.description}</Text>
+                </View>
+                <View style={[styles.checkCircle, { backgroundColor: theme.primary + '15' }]}>
+                  <Text style={[styles.checkmark, { color: theme.primary }]}>✓</Text>
+                </View>
+              </View>
+            ))}
           </View>
-          <Text style={[styles.title, { color: theme.text }]}>Unlock Full Power</Text>
-          <Text style={[styles.subtitle, { color: theme.textMuted }]}>
-            Get deeper insights and unlimited{'\n'}customization for your relationships
-          </Text>
         </Animated.View>
 
-        {/* Features */}
+        {/* Plan Toggle */}
         <Animated.View 
           entering={FadeInDown.delay(200).duration(500)}
-          style={styles.featuresContainer}
+          style={styles.planToggleSection}
         >
-          {FEATURES.map((feature, index) => (
-            <View 
-              key={index} 
-              style={[styles.featureRow, { backgroundColor: theme.card }]}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: theme.primary + '12' }]}>
-                <Text style={styles.featureEmoji}>{feature.icon}</Text>
-              </View>
-              <View style={styles.featureText}>
-                <Text style={[styles.featureTitle, { color: theme.text }]}>{feature.title}</Text>
-                <Text style={[styles.featureDescription, { color: theme.textMuted }]}>{feature.description}</Text>
-              </View>
-              <Text style={[styles.checkmark, { color: theme.primary }]}>✓</Text>
-            </View>
-          ))}
+          <View style={[styles.planToggle, { backgroundColor: theme.card }]}>
+            {packages.map((pkg) => {
+              const isYearly = pkg.identifier.toLowerCase().includes('annual') || 
+                              pkg.identifier.toLowerCase().includes('yearly');
+              const isSelected = selectedPackage === pkg.identifier;
+              
+              return (
+                <TouchableOpacity
+                  key={pkg.identifier}
+                  style={[
+                    styles.planOption,
+                    isSelected && { backgroundColor: theme.primary }
+                  ]}
+                  onPress={() => setSelectedPackage(pkg.identifier)}
+                  activeOpacity={0.8}
+                >
+                  {isYearly && (
+                    <View style={[styles.savePill, { backgroundColor: isSelected ? '#FFFFFF' : theme.primary }]}>
+                      <Text style={[styles.savePillText, { color: isSelected ? theme.primary : '#FFFFFF' }]}>-40%</Text>
+                    </View>
+                  )}
+                  <Text style={[
+                    styles.planOptionText,
+                    { color: isSelected ? '#FFFFFF' : theme.text }
+                  ]}>
+                    {isYearly ? 'Yearly' : 'Monthly'}
+                  </Text>
+                  <Text style={[
+                    styles.planOptionPrice,
+                    { color: isSelected ? 'rgba(255,255,255,0.85)' : theme.textMuted }
+                  ]}>
+                    {pkg.product.priceString}{isYearly ? '/yr' : '/mo'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </Animated.View>
 
-        {/* Pricing Options */}
+        {/* Guarantee */}
         <Animated.View 
           entering={FadeInDown.delay(300).duration(500)}
-          style={styles.pricingContainer}
+          style={styles.guaranteeSection}
         >
-          {packages.map((pkg) => {
-            const isSelected = selectedPackage === pkg.identifier;
-            const isYearly = pkg.identifier.toLowerCase().includes('annual') || 
-                            pkg.identifier.toLowerCase().includes('yearly');
-            
-            return (
-              <TouchableOpacity
-                key={pkg.identifier}
-                style={[
-                  styles.pricingOption,
-                  { 
-                    backgroundColor: theme.card,
-                    borderColor: isSelected ? theme.primary : theme.divider,
-                    borderWidth: isSelected ? 2 : 1.5,
-                  }
-                ]}
-                onPress={() => setSelectedPackage(pkg.identifier)}
-                activeOpacity={0.8}
-              >
-                {isYearly && (
-                  <View style={[styles.saveBadge, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.saveBadgeText}>BEST VALUE</Text>
-                  </View>
-                )}
-                <View style={styles.pricingContent}>
-                  <View style={styles.pricingLeft}>
-                    <View style={[
-                      styles.radioOuter,
-                      { borderColor: isSelected ? theme.primary : theme.divider }
-                    ]}>
-                      {isSelected && (
-                        <View style={[styles.radioInner, { backgroundColor: theme.primary }]} />
-                      )}
-                    </View>
-                    <View>
-                      <Text style={[styles.pricingTitle, { color: theme.text }]}>
-                        {isYearly ? 'Yearly' : 'Monthly'}
-                      </Text>
-                      <Text style={[styles.pricingSubtitle, { color: theme.textMuted }]}>
-                        {isYearly ? 'Billed annually' : 'Billed monthly'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.pricingRight}>
-                    <Text style={[styles.pricingPrice, { color: theme.text }]}>
-                      {pkg.product.priceString}
-                    </Text>
-                    <Text style={[styles.pricingPeriod, { color: theme.textMuted }]}>
-                      {isYearly ? '/year' : '/month'}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          <View style={[styles.guaranteeCard, { backgroundColor: theme.primary + '08' }]}>
+            <Text style={styles.guaranteeIcon}>🛡️</Text>
+            <View style={styles.guaranteeText}>
+              <Text style={[styles.guaranteeTitle, { color: theme.text }]}>Money-Back Guarantee</Text>
+              <Text style={[styles.guaranteeDescription, { color: theme.textMuted }]}>
+                Not satisfied? Get a full refund within 7 days.
+              </Text>
+            </View>
+          </View>
         </Animated.View>
       </ScrollView>
 
-      {/* Bottom CTA */}
+      {/* Bottom CTA - Clean and simple */}
       <Animated.View 
         entering={FadeInDown.delay(400).duration(500)}
         style={[styles.bottomSection, { backgroundColor: theme.card, borderTopColor: theme.divider }]}
       >
         <TouchableOpacity 
-          style={styles.purchaseButton}
+          style={[styles.purchaseButton, { opacity: (purchasing || packages.length === 0) ? 0.6 : 1 }]}
           onPress={handlePurchase}
-          disabled={purchasing || !selectedPackage}
+          disabled={purchasing || packages.length === 0}
           activeOpacity={0.8}
         >
           <LinearGradient
             colors={[theme.primary, theme.primaryLight]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.purchaseGradient, { opacity: purchasing ? 0.7 : 1 }]}
+            style={styles.purchaseGradient}
           >
             {purchasing ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.purchaseText}>Start Premium</Text>
+              <Text style={styles.purchaseText}>Start Free Trial</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={restorePurchases} style={styles.restoreButton}>
-          <Text style={[styles.restoreText, { color: theme.textMuted }]}>Restore Purchases</Text>
-        </TouchableOpacity>
+        <View style={styles.bottomLinks}>
+          <TouchableOpacity onPress={restorePurchases} disabled={purchasing}>
+            <Text style={[styles.linkText, { color: theme.textMuted }]}>Restore</Text>
+          </TouchableOpacity>
+          <Text style={[styles.linkDivider, { color: theme.divider }]}>•</Text>
+          <TouchableOpacity>
+            <Text style={[styles.linkText, { color: theme.textMuted }]}>Terms</Text>
+          </TouchableOpacity>
+          <Text style={[styles.linkDivider, { color: theme.divider }]}>•</Text>
+          <TouchableOpacity>
+            <Text style={[styles.linkText, { color: theme.textMuted }]}>Privacy</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -341,89 +396,76 @@ export default function PaywallScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+  },
+  header: {
+    paddingTop: 30,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontFamily: 'Inter_700Bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    color: 'rgba(255,255,255,0.85)',
   },
   closeButton: {
-    position: 'absolute',
-    top: 54,
-    right: 20,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
   closeText: {
     fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    padding: 20,
     paddingBottom: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
+  featuresSection: {
     marginBottom: 16,
   },
-  premiumIcon: {
-    fontSize: 14,
-  },
-  premiumText: {
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 1,
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 10,
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  featuresContainer: {
-    gap: 10,
-    marginBottom: 28,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
+  featuresCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
   },
   featureIcon: {
     width: 44,
@@ -447,76 +489,85 @@ const styles = StyleSheet.create({
   featureDescription: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
   },
-  checkmark: {
-    fontSize: 18,
-    fontFamily: 'Inter_700Bold',
-  },
-  pricingContainer: {
-    gap: 12,
-  },
-  pricingOption: {
-    borderRadius: 16,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  saveBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderBottomLeftRadius: 10,
-  },
-  saveBadgeText: {
-    fontSize: 10,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  pricingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pricingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  radioOuter: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+  checkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  checkmark: {
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
   },
-  pricingTitle: {
+  planToggleSection: {
+    marginBottom: 16,
+  },
+  planToggle: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 6,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  planOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    position: 'relative',
+  },
+  savePill: {
+    position: 'absolute',
+    top: -8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  savePillText: {
+    fontSize: 10,
+    fontFamily: 'Inter_700Bold',
+  },
+  planOptionText: {
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
-  pricingSubtitle: {
+  planOptionPrice: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Inter_500Medium',
     marginTop: 2,
   },
-  pricingRight: {
-    alignItems: 'flex-end',
+  guaranteeSection: {
+    marginBottom: 10,
   },
-  pricingPrice: {
-    fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+  guaranteeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    gap: 14,
   },
-  pricingPeriod: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+  guaranteeIcon: {
+    fontSize: 28,
+  },
+  guaranteeText: {
+    flex: 1,
+  },
+  guaranteeTitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 2,
+  },
+  guaranteeDescription: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
   },
   bottomSection: {
     padding: 20,
@@ -524,12 +575,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   purchaseButton: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
-    marginBottom: 14,
+    marginBottom: 16,
     shadowColor: '#F43F5E',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 4,
   },
@@ -543,12 +594,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     color: '#FFFFFF',
   },
-  restoreButton: {
+  bottomLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 8,
+    gap: 12,
   },
-  restoreText: {
-    fontSize: 14,
+  linkText: {
+    fontSize: 13,
     fontFamily: 'Inter_500Medium',
+  },
+  linkDivider: {
+    fontSize: 10,
   },
 });

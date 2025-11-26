@@ -209,17 +209,40 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* About Section */}
+        {/* Legal & Support Section */}
         <View style={[styles.section, { backgroundColor: theme.card, marginBottom: 32 }]}>
-          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ABOUT</Text>
-          <View style={[styles.aboutRow, { borderBottomColor: theme.divider }]}>
-            <Text style={[styles.aboutLabel, { color: theme.text }]}>App Version</Text>
-            <Text style={[styles.aboutValue, { color: theme.textMuted }]}>1.0.0</Text>
-          </View>
-          <View style={[styles.aboutRow, styles.lastRow]}>
-            <Text style={[styles.aboutLabel, { color: theme.text }]}>Made with</Text>
-            <Text style={styles.aboutValue}>❤️</Text>
-          </View>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>LEGAL & SUPPORT</Text>
+          
+          <TouchableOpacity 
+            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
+            onPress={() => (navigation as any).navigate('Legal')}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Terms of Service</Text>
+            </View>
+            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
+            onPress={() => (navigation as any).navigate('Legal')}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Privacy Policy</Text>
+            </View>
+            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.settingRow, styles.lastRow]}
+            onPress={() => (navigation as any).navigate('Legal')}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Contact Support</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Get help or send feedback</Text>
+            </View>
+            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
