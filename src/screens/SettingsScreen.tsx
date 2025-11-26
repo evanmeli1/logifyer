@@ -5,10 +5,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getSettings } from '../database/db';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../theme';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { user, signOut } = useAuth();
+  const { theme } = useTheme();
   const [settings, setSettings] = React.useState<any>(null);
 
   useFocusEffect(
@@ -45,9 +47,9 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: theme.background }]}>
       <LinearGradient
-        colors={['#F43F5E', '#FB7185']}
+        colors={[theme.primary, theme.primaryLight]}
         style={styles.header}
       >
         <TouchableOpacity 
@@ -62,18 +64,18 @@ export default function SettingsScreen() {
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ACCOUNT</Text>
           {user ? (
             <>
-              <View style={styles.settingRow}>
+              <View style={[styles.settingRow, { borderBottomColor: theme.divider }]}>
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingTitle}>Email</Text>
-                  <Text style={styles.settingSubtitle}>{user.email}</Text>
+                  <Text style={[styles.settingTitle, { color: theme.text }]}>Email</Text>
+                  <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>{user.email}</Text>
                 </View>
               </View>
               <TouchableOpacity 
-                style={[styles.settingRow, styles.dangerRow]}
+                style={[styles.settingRow, styles.lastRow]}
                 onPress={handleSignOut}
               >
                 <Text style={[styles.settingTitle, styles.dangerText]}>Sign Out</Text>
@@ -85,7 +87,7 @@ export default function SettingsScreen() {
               onPress={() => (navigation as any).navigate('SignIn')}
             >
               <LinearGradient
-                colors={['#F43F5E', '#FB923C']}
+                colors={[theme.primary, theme.primaryLight]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.signInGradient}
@@ -97,119 +99,125 @@ export default function SettingsScreen() {
         </View>
 
         {/* Premium Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PREMIUM</Text>
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>PREMIUM</Text>
           
           <TouchableOpacity 
-            style={[styles.settingRow, styles.premiumRow]}
+            style={[styles.settingRow, styles.premiumRow, styles.lastRow, { backgroundColor: theme.primary + '10' }]}
             onPress={() => (navigation as any).navigate('Paywall')}
           >
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, styles.premiumText]}>⭐ Upgrade to Premium</Text>
-              <Text style={styles.settingSubtitle}>Unlock AI insights & unlimited categories</Text>
+              <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>⭐ Upgrade to Premium</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Unlock AI insights & unlimited categories</Text>
             </View>
-            <Text style={styles.settingArrow}>›</Text>
+            <Text style={[styles.settingArrow, { color: theme.primary }]}>›</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SCORING</Text>
+        {/* Scoring Section */}
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>SCORING</Text>
           
           <TouchableOpacity 
-            style={styles.settingRow}
+            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
             onPress={() => (navigation as any).navigate('CategoryWeights')}
           >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Category Weights</Text>
-              <Text style={styles.settingSubtitle}>Adjust point values for each category</Text>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Category Weights</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Adjust point values for each category</Text>
             </View>
-            <Text style={styles.settingArrow}>›</Text>
+            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.settingRow}
+            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
             onPress={() => (navigation as any).navigate('GlobalSettings')}
           >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Major Incident Multiplier</Text>
-              <Text style={styles.settingSubtitle}>Currently {settings?.major_multiplier || 3}x</Text>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Major Incident Multiplier</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Currently {settings?.major_multiplier || 3}x</Text>
             </View>
-            <Text style={styles.settingValue}>{settings?.major_multiplier || 3}x</Text>
+            <Text style={[styles.settingValue, { color: theme.textMuted }]}>{settings?.major_multiplier || 3}x</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.settingRow}
+            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
             onPress={() => (navigation as any).navigate('GlobalSettings')}
           >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Time Decay</Text>
-              <Text style={styles.settingSubtitle}>Old incidents count less</Text>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Time Decay</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Old incidents count less</Text>
             </View>
-            <Text style={styles.settingValue}>
+            <Text style={[styles.settingValue, { color: theme.textMuted }]}>
               {settings?.time_decay_months === 0 ? 'Off' : `${settings?.time_decay_months || 6} months`}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.settingRow}
+            style={[styles.settingRow, styles.lastRow]}
             onPress={() => (navigation as any).navigate('GlobalSettings')}
           >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Recency Boost</Text>
-              <Text style={styles.settingSubtitle}>Recent incidents count 1.5x</Text>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Recency Boost</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Recent incidents count 1.5x</Text>
             </View>
-            <Text style={styles.settingValue}>{settings?.recency_boost_enabled ? 'On' : 'Off'}</Text>
+            <Text style={[styles.settingValue, { color: theme.textMuted }]}>
+              {settings?.recency_boost_enabled ? 'On' : 'Off'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CATEGORIES</Text>
+        {/* Categories Section */}
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>CATEGORIES</Text>
           
           <TouchableOpacity 
-            style={styles.settingRow}
+            style={[styles.settingRow, styles.lastRow]}
             onPress={() => (navigation as any).navigate('ManageCategories')}
           >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Manage Custom Categories</Text>
-              <Text style={styles.settingSubtitle}>Add, edit, or delete custom categories</Text>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Manage Custom Categories</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Add, edit, or delete custom categories</Text>
             </View>
-            <Text style={styles.settingArrow}>›</Text>
+            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>DATA</Text>
+        {/* Data Section */}
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>DATA</Text>
           
           <TouchableOpacity 
-            style={styles.settingRow}
+            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
             onPress={() => Alert.alert('Coming soon', 'Export feature')}
           >
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Export Data</Text>
-              <Text style={styles.settingSubtitle}>Download your data as JSON</Text>
+              <Text style={[styles.settingTitle, { color: theme.text }]}>Export Data</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Download your data as JSON</Text>
             </View>
-            <Text style={styles.settingArrow}>›</Text>
+            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.settingRow, styles.dangerRow]}
+            style={[styles.settingRow, styles.lastRow]}
             onPress={handleDeleteAllData}
           >
             <View style={styles.settingInfo}>
               <Text style={[styles.settingTitle, styles.dangerText]}>Delete All Data</Text>
-              <Text style={styles.settingSubtitle}>Permanently erase everything</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Permanently erase everything</Text>
             </View>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ABOUT</Text>
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>App Version</Text>
-            <Text style={styles.aboutValue}>1.0.0</Text>
+        {/* About Section */}
+        <View style={[styles.section, { backgroundColor: theme.card, marginBottom: 32 }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ABOUT</Text>
+          <View style={[styles.aboutRow, { borderBottomColor: theme.divider }]}>
+            <Text style={[styles.aboutLabel, { color: theme.text }]}>App Version</Text>
+            <Text style={[styles.aboutValue, { color: theme.textMuted }]}>1.0.0</Text>
           </View>
-          <View style={styles.aboutRow}>
-            <Text style={styles.aboutLabel}>Made with</Text>
+          <View style={[styles.aboutRow, styles.lastRow]}>
+            <Text style={[styles.aboutLabel, { color: theme.text }]}>Made with</Text>
             <Text style={styles.aboutValue}>❤️</Text>
           </View>
         </View>
@@ -221,7 +229,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -240,11 +247,11 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 28,
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -255,7 +262,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    backgroundColor: '#FFFFFF',
     marginTop: 16,
     marginHorizontal: 20,
     borderRadius: 16,
@@ -264,11 +270,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    overflow: 'hidden',
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#9CA3AF',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -281,33 +287,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  },
+  lastRow: {
+    borderBottomWidth: 0,
   },
   settingInfo: {
     flex: 1,
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     marginBottom: 4,
-    color: '#111827',
     letterSpacing: -0.2,
   },
   settingSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter_400Regular',
   },
   settingValue: {
     fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   settingArrow: {
     fontSize: 22,
-    color: '#D1D5DB',
-  },
-  dangerRow: {
-    borderBottomWidth: 0,
   },
   dangerText: {
     color: '#EF4444',
@@ -317,7 +319,7 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#F43F5E',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -330,7 +332,7 @@ const styles = StyleSheet.create({
   signInButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: -0.2,
   },
   aboutRow: {
@@ -339,24 +341,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   aboutLabel: {
     fontSize: 16,
-    color: '#111827',
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   aboutValue: {
     fontSize: 16,
-    color: '#6B7280',
+    fontFamily: 'Inter_500Medium',
   },
   premiumRow: {
-    backgroundColor: '#FEF2F2',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FEE2E2',
+    borderRadius: 0,
   },
   premiumText: {
-    color: '#F43F5E',
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
 });

@@ -36,7 +36,9 @@
     "plugins": [
       "expo-sqlite",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "expo-secure-store",
+      "expo-font"
     ],
     "extra": {
       "eas": {

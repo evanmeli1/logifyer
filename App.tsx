@@ -18,7 +18,8 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import SignInScreen from './src/screens/SignInScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import { initializePurchases } from './src/services/purchases';
-
+import { ThemeProvider, useTheme } from './src/theme';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -34,7 +35,7 @@ function HomeStack() {
       <Stack.Screen 
         name="AddPerson" 
         component={AddPersonScreen}
-        options={{ title: 'Add Person' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="PersonDetail" 
@@ -78,7 +79,7 @@ function SettingsStack() {
       <Stack.Screen 
         name="CategoryWeights" 
         component={CategoryWeightsScreen}
-        options={{ title: 'Category Weights' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="GlobalSettings" 
@@ -88,7 +89,7 @@ function SettingsStack() {
       <Stack.Screen 
         name="ManageCategories" 
         component={ManageCategoriesScreen}
-        options={{ title: 'Manage Categories' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="Paywall" 
@@ -112,22 +113,24 @@ function StatsStack() {
 }
 
 function TabNavigator() {
+  const { theme } = useTheme();
+  
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#F43F5E',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontFamily: 'Inter_600SemiBold',
         },
         tabBarStyle: {
           height: 80,
           paddingBottom: 8,
           paddingTop: 8,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          backgroundColor: '#FFFFFF',
+          borderTopColor: theme.divider,
+          backgroundColor: theme.card,
         },
       }}
     >
@@ -165,8 +168,30 @@ function TabNavigator() {
   );
 }
 
+function AppContent() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="MainApp" component={TabNavigator} />
+        <Stack.Screen 
+          name="Settings" 
+          component={SettingsStack}
+          options={{ presentation: 'modal' }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   const [dbInitialized, setDbInitialized] = useState(false);
+  
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
 
   useEffect(() => {
     const testSupabase = async () => {
@@ -200,7 +225,7 @@ export default function App() {
     testSupabase();
   }, []);
 
-  if (!dbInitialized) {
+  if (!dbInitialized || !fontsLoaded) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
@@ -210,17 +235,10 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="MainApp" component={TabNavigator} />
-          <Stack.Screen 
-            name="Settings" 
-            component={SettingsStack}
-            options={{ presentation: 'modal' }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

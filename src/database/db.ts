@@ -227,3 +227,7 @@ export const toggleFavorite = (personId: number) => {
   const newFavoriteStatus = person?.is_favorite ? 0 : 1;
   db.runSync('UPDATE people SET is_favorite = ? WHERE id = ?', [newFavoriteStatus, personId]);
 };
+
+export const getDatabase = () => {
+  return SQLite.openDatabaseSync('logifyer.db');
+};

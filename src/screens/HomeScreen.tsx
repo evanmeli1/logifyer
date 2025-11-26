@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { getAllPeople, getPersonScore, toggleFavorite } from '../database/db';
 import { Person } from '../types';
+import { useTheme } from '../theme';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -19,6 +20,7 @@ type SortOption = 'score-high' | 'score-low' | 'name' | 'recent';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const { theme } = useTheme();
   const [people, setPeople] = useState<(Person & { score: number })[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('score-high');
@@ -118,7 +120,7 @@ export default function HomeScreen() {
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="#F3F4F6"
+            stroke={theme.backgroundSecondary}
             strokeWidth="6"
             fill="none"
           />
@@ -137,7 +139,7 @@ export default function HomeScreen() {
         </Svg>
         <View style={styles.ringCenter}>
           <Text style={[styles.ringGrade, { color }]}>{getHealthGrade(score)}</Text>
-          <Text style={styles.ringScore}>{score}</Text>
+          <Text style={[styles.ringScore, { color: theme.textMuted }]}>{score}</Text>
         </View>
       </View>
     );
@@ -164,33 +166,30 @@ export default function HomeScreen() {
       >
         <AnimatedTouchable
           style={[styles.personCard, animatedStyle]}
-          onPress={() => (navigation as any).navigate('Home', { 
-            screen: 'PersonDetail', 
-            params: { personId: item.id } 
-          })}
+          onPress={() => (navigation as any).navigate('PersonDetail', { personId: item.id })}
           onPressIn={onPressIn}
           onPressOut={onPressOut}
           activeOpacity={1}
         >
-          <View style={styles.cardWrapper}>
-            <View style={styles.cardInner}>
+          <View style={[styles.cardWrapper, { backgroundColor: theme.card }]}>
+            <View style={[styles.cardInner, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.cardContent}>
                 <HealthRing score={item.score} size={68} />
                 
                 <View style={styles.personInfo}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.personName}>{item.name}</Text>
+                    <Text style={[styles.personName, { color: theme.text }]}>{item.name}</Text>
                     <TouchableOpacity 
                       onPress={() => handleToggleFavorite(item.id)}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Text style={styles.favoriteIcon}>
+                      <Text style={[styles.favoriteIcon, { color: theme.primary }]}>
                         {item.is_favorite ? '★' : '☆'}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  <View style={styles.relationshipBadge}>
-                    <Text style={styles.relationshipType}>{item.relationship_type}</Text>
+                  <View style={[styles.relationshipBadge, { backgroundColor: theme.primary + '15' }]}>
+                    <Text style={[styles.relationshipType, { color: theme.primary }]}>{item.relationship_type}</Text>
                   </View>
                   <View style={styles.trendContainer}>
                     <Text style={styles.trendArrow}>↗</Text>
@@ -216,11 +215,11 @@ export default function HomeScreen() {
 
   return (
     <LinearGradient
-      colors={['#F9FAFB', '#F3F4F6']}
+      colors={[theme.background, theme.backgroundSecondary]}
       style={styles.container}
     >
       <LinearGradient
-        colors={['#F43F5E', '#FB7185']}
+        colors={[theme.primary, theme.primaryLight]}
         style={styles.header}
       >
         <Animated.View entering={FadeIn.duration(400)} style={styles.headerContent}>
@@ -230,7 +229,7 @@ export default function HomeScreen() {
               <Text style={styles.headerSubtitle}>{people.length} {people.length === 1 ? 'person' : 'people'} tracked</Text>
             </View>
             <TouchableOpacity 
-              style={styles.settingsButton}
+              style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
               onPress={() => (navigation as any).navigate('Settings', { screen: 'SettingsMain' })}
             >
               <View style={styles.settingsIconContainer}>
@@ -248,18 +247,18 @@ export default function HomeScreen() {
           entering={FadeIn.delay(200)}
           style={styles.emptyState}
         >
-          <View style={styles.emptyIconContainer}>
+          <View style={[styles.emptyIconContainer, { backgroundColor: theme.primary + '15' }]}>
             <Text style={styles.emptyIcon}>👥</Text>
           </View>
-          <Text style={styles.emptyTitle}>Start tracking relationships</Text>
-          <Text style={styles.emptySubtitle}>Add your first person to begin monitoring relationship health</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>Start tracking relationships</Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>Add your first person to begin monitoring relationship health</Text>
           
           <TouchableOpacity 
             style={styles.emptyButton}
-            onPress={() => (navigation as any).navigate('Home', { screen: 'AddPerson' })}
+            onPress={() => (navigation as any).navigate('AddPerson')}
           >
             <LinearGradient
-              colors={['#F43F5E', '#FB923C']}
+              colors={[theme.primary, theme.primaryLight]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.gradientButton}
@@ -272,49 +271,49 @@ export default function HomeScreen() {
         <>
           {/* Search & Sort Bar */}
           <View style={styles.controlsContainer}>
-            <View style={styles.searchContainer}>
+            <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <Text style={styles.searchIcon}>🔍</Text>
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: theme.text }]}
                 placeholder="Search people..."
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={theme.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
             </View>
             
             <TouchableOpacity 
-              style={styles.sortButton}
+              style={[styles.sortButton, { backgroundColor: theme.card, borderColor: theme.border }]}
               onPress={() => setShowSortMenu(!showSortMenu)}
             >
-              <Text style={styles.sortButtonText}>{getSortLabel()}</Text>
-              <Text style={styles.sortArrow}>▼</Text>
+              <Text style={[styles.sortButtonText, { color: theme.text }]}>{getSortLabel()}</Text>
+              <Text style={[styles.sortArrow, { color: theme.textMuted }]}>▼</Text>
             </TouchableOpacity>
 
             {showSortMenu && (
-              <View style={styles.sortMenu}>
+              <View style={[styles.sortMenu, { backgroundColor: theme.card }]}>
                 {sortBy !== 'score-high' && (
                   <TouchableOpacity 
-                    style={styles.sortOption}
+                    style={[styles.sortOption, { borderBottomColor: theme.divider }]}
                     onPress={() => { setSortBy('score-high'); setShowSortMenu(false); }}
                   >
-                    <Text style={styles.sortOptionText}>Highest Score</Text>
+                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>Highest Score</Text>
                   </TouchableOpacity>
                 )}
                 {sortBy !== 'score-low' && (
                   <TouchableOpacity 
-                    style={styles.sortOption}
+                    style={[styles.sortOption, { borderBottomColor: theme.divider }]}
                     onPress={() => { setSortBy('score-low'); setShowSortMenu(false); }}
                   >
-                    <Text style={styles.sortOptionText}>Lowest Score</Text>
+                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>Lowest Score</Text>
                   </TouchableOpacity>
                 )}
                 {sortBy !== 'name' && (
                   <TouchableOpacity 
-                    style={styles.sortOption}
+                    style={[styles.sortOption, { borderBottomColor: theme.divider }]}
                     onPress={() => { setSortBy('name'); setShowSortMenu(false); }}
                   >
-                    <Text style={styles.sortOptionText}>Name (A-Z)</Text>
+                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>Name (A-Z)</Text>
                   </TouchableOpacity>
                 )}
                 {sortBy !== 'recent' && (
@@ -322,7 +321,7 @@ export default function HomeScreen() {
                     style={[styles.sortOption, styles.sortOptionLast]}
                     onPress={() => { setSortBy('recent'); setShowSortMenu(false); }}
                   >
-                    <Text style={styles.sortOptionText}>Recently Added</Text>
+                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>Recently Added</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -339,11 +338,11 @@ export default function HomeScreen() {
           
           <TouchableOpacity 
             style={styles.fab}
-            onPress={() => (navigation as any).navigate('Home', { screen: 'AddPerson' })}
+            onPress={() => (navigation as any).navigate('AddPerson')}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#F43F5E', '#FB923C']}
+              colors={[theme.primary, theme.primaryLight]}
               style={styles.fabGradient}
             >
               <Text style={styles.fabText}>+</Text>
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 34,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     color: '#FFFFFF',
     marginBottom: 6,
     letterSpacing: -0.5,
@@ -380,26 +379,25 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
   },
   settingsButton: {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-settingsIconContainer: {
-  flexDirection: 'row',
-  gap: 4,
-},
-settingsDot: {
-  width: 4,
-  height: 4,
-  borderRadius: 2,
-  backgroundColor: '#FFFFFF',
-},
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsIconContainer: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  settingsDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
+  },
   controlsContainer: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -411,13 +409,11 @@ settingsDot: {
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.08)',
   },
   searchIcon: {
     fontSize: 18,
@@ -426,27 +422,23 @@ settingsDot: {
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
+    fontFamily: 'Inter_500Medium',
   },
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.08)',
   },
   sortButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
+    fontFamily: 'Inter_600SemiBold',
   },
   sortArrow: {
     fontSize: 10,
-    color: '#6B7280',
     marginLeft: 8,
   },
   sortMenu: {
@@ -454,7 +446,6 @@ settingsDot: {
     top: 110,
     left: 20,
     right: 20,
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -467,15 +458,13 @@ settingsDot: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   sortOptionLast: {
     borderBottomWidth: 0,
   },
   sortOptionText: {
     fontSize: 15,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
   },
   listContent: {
     padding: 20,
@@ -487,7 +476,6 @@ settingsDot: {
   },
   cardWrapper: {
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
     shadowColor: '#F43F5E',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -497,9 +485,7 @@ settingsDot: {
   cardInner: {
     borderRadius: 20,
     padding: 20,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.08)',
   },
   cardContent: {
     flexDirection: 'row',
@@ -517,14 +503,13 @@ settingsDot: {
   },
   ringGrade: {
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: -0.5,
   },
   ringScore: {
     fontSize: 13,
-    color: '#9CA3AF',
     marginTop: -1,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   personInfo: {
     flex: 1,
@@ -537,18 +522,15 @@ settingsDot: {
   },
   personName: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
+    fontFamily: 'Inter_600SemiBold',
     letterSpacing: -0.3,
     flex: 1,
   },
   favoriteIcon: {
     fontSize: 24,
-    color: '#F43F5E',
   },
   relationshipBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FEF2F2',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -556,8 +538,7 @@ settingsDot: {
   },
   relationshipType: {
     fontSize: 13,
-    color: '#991B1B',
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   trendContainer: {
     flexDirection: 'row',
@@ -570,7 +551,7 @@ settingsDot: {
   trendText: {
     fontSize: 14,
     color: '#059669',
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   emptyState: {
     flex: 1,
@@ -582,7 +563,6 @@ settingsDot: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#FEF2F2',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 28,
@@ -592,14 +572,13 @@ settingsDot: {
   },
   emptyTitle: {
     fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
+    fontFamily: 'Inter_700Bold',
     marginBottom: 10,
     letterSpacing: -0.5,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    fontFamily: 'Inter_500Medium',
     marginBottom: 36,
     textAlign: 'center',
     lineHeight: 24,
@@ -621,7 +600,7 @@ settingsDot: {
   emptyButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: -0.3,
   },
   fab: {
@@ -645,6 +624,6 @@ settingsDot: {
   fabText: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: '300',
+    fontFamily: 'Inter_400Regular',
   },
 });

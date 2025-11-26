@@ -5,8 +5,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getAllPeople, getAllCategories, logIncident, getSettings } from '../database/db';
 import { Person, Category } from '../types';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTheme } from '../theme';
 
 export default function LogIncidentScreen({ route }: any) {
+  const { theme } = useTheme();
   const [majorMultiplier, setMajorMultiplier] = useState(3);
   const navigation = useNavigation();
   const preSelectedPersonId = route.params?.personId;
@@ -88,9 +90,9 @@ export default function LogIncidentScreen({ route }: any) {
   const positiveCategories = categories.filter(c => c.is_positive === 1);
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: theme.background }]}>
       <LinearGradient
-        colors={['#F43F5E', '#FB7185']}
+        colors={[theme.primary, theme.primaryLight]}
         style={styles.header}
       >
         <TouchableOpacity 
@@ -108,12 +110,12 @@ export default function LogIncidentScreen({ route }: any) {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.section}>
-          <Text style={styles.label}>PERSON</Text>
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.label, { color: theme.textMuted }]}>PERSON</Text>
           {preSelectedPersonId ? (
-            <View style={styles.selectedPersonCard}>
-              <Text style={styles.selectedPersonName}>{selectedPerson?.name}</Text>
-              <Text style={styles.selectedPersonType}>{selectedPerson?.relationship_type}</Text>
+            <View style={[styles.selectedPersonCard, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}>
+              <Text style={[styles.selectedPersonName, { color: theme.text }]}>{selectedPerson?.name}</Text>
+              <Text style={[styles.selectedPersonType, { color: theme.primary }]}>{selectedPerson?.relationship_type}</Text>
             </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.peopleScroll}>
@@ -122,12 +124,14 @@ export default function LogIncidentScreen({ route }: any) {
                   key={person.id}
                   style={[
                     styles.personChip,
-                    selectedPersonId === person.id && styles.personChipSelected,
+                    { borderColor: theme.divider, backgroundColor: theme.card },
+                    selectedPersonId === person.id && [styles.personChipSelected, { backgroundColor: theme.primary, borderColor: theme.primary }],
                   ]}
                   onPress={() => setSelectedPersonId(person.id)}
                 >
                   <Text style={[
                     styles.personChipText,
+                    { color: theme.textMuted },
                     selectedPersonId === person.id && styles.personChipTextSelected,
                   ]}>
                     {person.name}
@@ -138,28 +142,29 @@ export default function LogIncidentScreen({ route }: any) {
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>NEGATIVE CATEGORIES</Text>
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.label, { color: theme.textMuted }]}>NEGATIVE CATEGORIES</Text>
           <View style={styles.categoryGrid}>
             {negativeCategories.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
                 style={[
                   styles.categoryButton,
+                  { borderColor: theme.divider, backgroundColor: theme.card },
                   selectedCategory?.id === cat.id && styles.categoryButtonSelected,
                 ]}
                 onPress={() => setSelectedCategory(cat)}
               >
                 <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-                <Text style={styles.categoryName}>{cat.name}</Text>
-                <Text style={styles.categoryPoints}>{cat.default_points}</Text>
+                <Text style={[styles.categoryName, { color: theme.text }]}>{cat.name}</Text>
+                <Text style={[styles.categoryPoints, { color: theme.textMuted }]}>{cat.default_points}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>POSITIVE CATEGORIES</Text>
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.label, { color: theme.textMuted }]}>POSITIVE CATEGORIES</Text>
           <View style={styles.categoryGrid}>
             {positiveCategories.map((cat) => (
               <TouchableOpacity
@@ -167,30 +172,35 @@ export default function LogIncidentScreen({ route }: any) {
                 style={[
                   styles.categoryButton,
                   styles.categoryButtonPositive,
+                  { borderColor: theme.divider, backgroundColor: theme.card },
                   selectedCategory?.id === cat.id && styles.categoryButtonSelectedPositive,
                 ]}
                 onPress={() => setSelectedCategory(cat)}
               >
                 <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-                <Text style={styles.categoryName}>{cat.name}</Text>
-                <Text style={styles.categoryPoints}>+{cat.default_points}</Text>
+                <Text style={[styles.categoryName, { color: theme.text }]}>{cat.name}</Text>
+                <Text style={[styles.categoryPoints, { color: theme.textMuted }]}>+{cat.default_points}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {selectedCategory && (
-          <View style={styles.section}>
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
             <TouchableOpacity
               style={styles.majorToggle}
               onPress={() => setIsMajor(!isMajor)}
             >
-              <View style={[styles.checkbox, isMajor && styles.checkboxActive]}>
+              <View style={[
+                styles.checkbox,
+                { borderColor: theme.divider },
+                isMajor && [styles.checkboxActive, { borderColor: theme.primary, backgroundColor: theme.primary }]
+              ]}>
                 {isMajor && <Text style={styles.checkmark}>✓</Text>}
               </View>
               <View style={styles.majorToggleText}>
-                <Text style={styles.majorToggleTitle}>Major incident ({majorMultiplier}x points)</Text>
-                <Text style={styles.majorToggleSubtitle}>
+                <Text style={[styles.majorToggleTitle, { color: theme.text }]}>Major incident ({majorMultiplier}x points)</Text>
+                <Text style={[styles.majorToggleSubtitle, { color: theme.textMuted }]}>
                   {isMajor 
                     ? `Will count as ${selectedCategory.default_points * majorMultiplier} points`
                     : `Currently ${selectedCategory.default_points} points`
@@ -201,12 +211,19 @@ export default function LogIncidentScreen({ route }: any) {
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>NOTE (OPTIONAL)</Text>
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <Text style={[styles.label, { color: theme.textMuted }]}>NOTE (OPTIONAL)</Text>
           <TextInput
-            style={styles.noteInput}
+            style={[
+              styles.noteInput,
+              {
+                borderColor: theme.divider,
+                color: theme.text,
+                backgroundColor: theme.backgroundSecondary,
+              }
+            ]}
             placeholder="Add details..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.textMuted}
             value={note}
             onChangeText={setNote}
             multiline
@@ -218,7 +235,7 @@ export default function LogIncidentScreen({ route }: any) {
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <LinearGradient
-          colors={['#F43F5E', '#FB923C']}
+          colors={[theme.primary, theme.primaryLight]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.saveGradient}
@@ -233,7 +250,6 @@ export default function LogIncidentScreen({ route }: any) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#FFF5F7',
   },
   header: {
     flexDirection: 'row',
@@ -252,11 +268,11 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 24,
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -267,7 +283,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    backgroundColor: '#FFFFFF',
     marginTop: 16,
     marginHorizontal: 20,
     padding: 16,
@@ -280,29 +295,24 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#9CA3AF',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
     marginBottom: 12,
   },
   selectedPersonCard: {
     padding: 16,
-    backgroundColor: '#FEF2F2',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(244, 63, 94, 0.2)',
   },
   selectedPersonName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: -0.3,
   },
   selectedPersonType: {
     fontSize: 14,
-    color: '#991B1B',
     marginTop: 4,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   peopleScroll: {
     flexDirection: 'row',
@@ -312,22 +322,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
     marginRight: 8,
   },
-  personChipSelected: {
-    backgroundColor: '#F43F5E',
-    borderColor: '#F43F5E',
-  },
+  personChipSelected: {},
   personChipText: {
     fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   personChipTextSelected: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   categoryGrid: {
     flexDirection: 'row',
@@ -339,12 +343,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
   },
   categoryButtonPositive: {
-    borderColor: '#E5E7EB',
+    // Kept for structure, styling applied inline
   },
   categoryButtonSelected: {
     borderColor: '#EF4444',
@@ -360,15 +362,13 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     textAlign: 'center',
     marginBottom: 4,
-    color: '#111827',
   },
   categoryPoints: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#6B7280',
+    fontFamily: 'Inter_700Bold',
   },
   majorToggle: {
     flexDirection: 'row',
@@ -378,46 +378,38 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#E5E7EB',
     borderRadius: 6,
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkboxActive: {
-    borderColor: '#F43F5E',
-    backgroundColor: '#F43F5E',
-  },
+  checkboxActive: {},
   checkmark: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   majorToggleText: {
     flex: 1,
   },
   majorToggleTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
     marginBottom: 2,
-    color: '#111827',
     letterSpacing: -0.2,
   },
   majorToggleSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    fontFamily: 'Inter_400Regular',
   },
   noteInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
+    fontFamily: 'Inter_400Regular',
     minHeight: 100,
-    color: '#111827',
-    backgroundColor: '#FAFAFA',
   },
-
   saveButton: {
     position: 'absolute',
     bottom: 20,
@@ -439,7 +431,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
     letterSpacing: -0.3,
   },
 });
