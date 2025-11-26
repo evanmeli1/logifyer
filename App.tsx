@@ -74,7 +74,7 @@ function SettingsStack() {
       <Stack.Screen 
         name="SignIn" 
         component={SignInScreen}
-        options={{ title: 'Sign In' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="CategoryWeights" 
@@ -84,7 +84,7 @@ function SettingsStack() {
       <Stack.Screen 
         name="GlobalSettings" 
         component={GlobalSettingsScreen}
-        options={{ title: 'Global Settings' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="ManageCategories" 
@@ -94,7 +94,7 @@ function SettingsStack() {
       <Stack.Screen 
         name="Paywall" 
         component={PaywallScreen}
-        options={{ title: 'Upgrade' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
