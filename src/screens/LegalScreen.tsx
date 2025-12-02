@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -11,8 +11,10 @@ type TabType = 'terms' | 'privacy' | 'support';
 
 export default function LegalScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState<TabType>('terms');
+  const { tab } = (route.params as { tab?: TabType }) || {};
+  const [activeTab, setActiveTab] = useState<TabType>(tab || 'terms');
 
   const termsContent = [
     {

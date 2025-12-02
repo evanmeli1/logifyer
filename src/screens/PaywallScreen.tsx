@@ -13,6 +13,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { useTheme } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -109,9 +110,9 @@ const FEATURES = [
 
 export default function PaywallScreen({ navigation }: any) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
@@ -123,15 +124,6 @@ export default function PaywallScreen({ navigation }: any) {
       const offerings = await Purchases.getOfferings();
       if (offerings.current?.availablePackages) {
         setPackages(offerings.current.availablePackages);
-        const annualPkg = offerings.current.availablePackages.find(
-          p => p.identifier.toLowerCase().includes('annual') || 
-               p.identifier.toLowerCase().includes('yearly')
-        );
-        setSelectedPackage(
-          annualPkg?.identifier || 
-          offerings.current.availablePackages[0]?.identifier || 
-          null
-        );
       }
     } catch (error) {
       console.error('Error loading offerings:', error);
@@ -141,16 +133,24 @@ export default function PaywallScreen({ navigation }: any) {
   };
 
   const handlePurchase = async () => {
-    if (!selectedPackage) {
-      Alert.alert('Error', 'Please select a plan');
+    if (!user) {
+      Alert.alert(
+        'Account Required',
+        'You need to sign in before subscribing to Premium.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.replace('SignIn') }
+        ]
+      );
       return;
     }
 
-    const pkg = packages.find(p => p.identifier === selectedPackage);
-    if (!pkg) {
-      Alert.alert('Error', 'Selected plan not found');
+    if (packages.length === 0) {
+      Alert.alert('Error', 'No subscription plan available');
       return;
     }
+
+    const pkg = packages[0];
 
     setPurchasing(true);
     try {
@@ -185,16 +185,6 @@ export default function PaywallScreen({ navigation }: any) {
     } finally {
       setPurchasing(false);
     }
-  };
-
-  const getSelectedPrice = () => {
-    const pkg = packages.find(p => p.identifier === selectedPackage);
-    return pkg?.product.priceString || '';
-  };
-
-  const isYearlySelected = () => {
-    return selectedPackage?.toLowerCase().includes('annual') || 
-           selectedPackage?.toLowerCase().includes('yearly');
   };
 
   if (loading) {
@@ -236,7 +226,7 @@ export default function PaywallScreen({ navigation }: any) {
         />
       </View>
 
-      {/* Header - Matching StatsScreen */}
+      {/* Header */}
       <LinearGradient
         colors={[theme.primary, theme.primaryLight]}
         style={styles.header}
@@ -289,53 +279,9 @@ export default function PaywallScreen({ navigation }: any) {
           </View>
         </Animated.View>
 
-        {/* Plan Toggle */}
-        <Animated.View 
-          entering={FadeInDown.delay(200).duration(500)}
-          style={styles.planToggleSection}
-        >
-          <View style={[styles.planToggle, { backgroundColor: theme.card }]}>
-            {packages.map((pkg) => {
-              const isYearly = pkg.identifier.toLowerCase().includes('annual') || 
-                              pkg.identifier.toLowerCase().includes('yearly');
-              const isSelected = selectedPackage === pkg.identifier;
-              
-              return (
-                <TouchableOpacity
-                  key={pkg.identifier}
-                  style={[
-                    styles.planOption,
-                    isSelected && { backgroundColor: theme.primary }
-                  ]}
-                  onPress={() => setSelectedPackage(pkg.identifier)}
-                  activeOpacity={0.8}
-                >
-                  {isYearly && (
-                    <View style={[styles.savePill, { backgroundColor: isSelected ? '#FFFFFF' : theme.primary }]}>
-                      <Text style={[styles.savePillText, { color: isSelected ? theme.primary : '#FFFFFF' }]}>-40%</Text>
-                    </View>
-                  )}
-                  <Text style={[
-                    styles.planOptionText,
-                    { color: isSelected ? '#FFFFFF' : theme.text }
-                  ]}>
-                    {isYearly ? 'Yearly' : 'Monthly'}
-                  </Text>
-                  <Text style={[
-                    styles.planOptionPrice,
-                    { color: isSelected ? 'rgba(255,255,255,0.85)' : theme.textMuted }
-                  ]}>
-                    {pkg.product.priceString}{isYearly ? '/yr' : '/mo'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Animated.View>
-
         {/* Guarantee */}
         <Animated.View 
-          entering={FadeInDown.delay(300).duration(500)}
+          entering={FadeInDown.delay(200).duration(500)}
           style={styles.guaranteeSection}
         >
           <View style={[styles.guaranteeCard, { backgroundColor: theme.primary + '08' }]}>
@@ -350,9 +296,9 @@ export default function PaywallScreen({ navigation }: any) {
         </Animated.View>
       </ScrollView>
 
-      {/* Bottom CTA - Clean and simple */}
+      {/* Bottom CTA */}
       <Animated.View 
-        entering={FadeInDown.delay(400).duration(500)}
+        entering={FadeInDown.delay(300).duration(500)}
         style={[styles.bottomSection, { backgroundColor: theme.card, borderTopColor: theme.divider }]}
       >
         <TouchableOpacity 
@@ -370,7 +316,7 @@ export default function PaywallScreen({ navigation }: any) {
             {purchasing ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.purchaseText}>Start Free Trial</Text>
+              <Text style={styles.purchaseText}>Start 1 Week Free Trial • $1.99/mo</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -380,11 +326,11 @@ export default function PaywallScreen({ navigation }: any) {
             <Text style={[styles.linkText, { color: theme.textMuted }]}>Restore</Text>
           </TouchableOpacity>
           <Text style={[styles.linkDivider, { color: theme.divider }]}>•</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Legal', { tab: 'terms' })}>
             <Text style={[styles.linkText, { color: theme.textMuted }]}>Terms</Text>
           </TouchableOpacity>
           <Text style={[styles.linkDivider, { color: theme.divider }]}>•</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Legal', { tab: 'privacy' })}>
             <Text style={[styles.linkText, { color: theme.textMuted }]}>Privacy</Text>
           </TouchableOpacity>
         </View>
@@ -501,48 +447,6 @@ const styles = StyleSheet.create({
   checkmark: {
     fontSize: 14,
     fontFamily: 'Inter_700Bold',
-  },
-  planToggleSection: {
-    marginBottom: 16,
-  },
-  planToggle: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    padding: 6,
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  planOption: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    position: 'relative',
-  },
-  savePill: {
-    position: 'absolute',
-    top: -8,
-    right: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  savePillText: {
-    fontSize: 10,
-    fontFamily: 'Inter_700Bold',
-  },
-  planOptionText: {
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  planOptionPrice: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-    marginTop: 2,
   },
   guaranteeSection: {
     marginBottom: 10,

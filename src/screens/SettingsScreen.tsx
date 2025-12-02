@@ -6,12 +6,32 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getSettings } from '../database/db';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../theme';
+import { checkSubscription } from '../services/purchases';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { user, signOut } = useAuth();
   const { theme } = useTheme();
   const [settings, setSettings] = React.useState<any>(null);
+  const [isPremium, setIsPremium] = React.useState(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const settingsData = getSettings();
+      setSettings(settingsData);
+      
+      // Check premium status
+      const checkPremium = async () => {
+        try {
+          const premium = await checkSubscription();
+          setIsPremium(premium);
+        } catch (error) {
+          console.log('Error checking subscription:', error);
+        }
+      };
+      checkPremium();
+    }, [])
+  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -102,16 +122,28 @@ export default function SettingsScreen() {
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>PREMIUM</Text>
           
-          <TouchableOpacity 
-            style={[styles.settingRow, styles.premiumRow, styles.lastRow, { backgroundColor: theme.primary + '10' }]}
-            onPress={() => (navigation as any).navigate('Paywall')}
-          >
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>⭐ Upgrade to Premium</Text>
-              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Unlock AI insights & unlimited categories</Text>
+          {isPremium ? (
+            <View style={[styles.settingRow, styles.premiumRow, styles.lastRow, { backgroundColor: theme.primary + '10' }]}>
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>✨ Premium Active</Text>
+                <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>You have access to all features</Text>
+              </View>
+              <View style={[styles.premiumBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.premiumBadgeText}>PRO</Text>
+              </View>
             </View>
-            <Text style={[styles.settingArrow, { color: theme.primary }]}>›</Text>
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.settingRow, styles.premiumRow, styles.lastRow, { backgroundColor: theme.primary + '10' }]}
+              onPress={() => (navigation as any).navigate('Paywall')}
+            >
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>⭐ Upgrade to Premium</Text>
+                <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Unlock AI insights & unlimited categories</Text>
+              </View>
+              <Text style={[styles.settingArrow, { color: theme.primary }]}>›</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Scoring Section */}
@@ -215,7 +247,7 @@ export default function SettingsScreen() {
           
           <TouchableOpacity 
             style={[styles.settingRow, { borderBottomColor: theme.divider }]}
-            onPress={() => (navigation as any).navigate('Legal')}
+            onPress={() => (navigation as any).navigate('Legal', { tab: 'terms' })}
           >
             <View style={styles.settingInfo}>
               <Text style={[styles.settingTitle, { color: theme.text }]}>Terms of Service</Text>
@@ -225,7 +257,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity 
             style={[styles.settingRow, { borderBottomColor: theme.divider }]}
-            onPress={() => (navigation as any).navigate('Legal')}
+            onPress={() => (navigation as any).navigate('Legal', { tab: 'privacy' })}
           >
             <View style={styles.settingInfo}>
               <Text style={[styles.settingTitle, { color: theme.text }]}>Privacy Policy</Text>
@@ -235,7 +267,7 @@ export default function SettingsScreen() {
 
           <TouchableOpacity 
             style={[styles.settingRow, styles.lastRow]}
-            onPress={() => (navigation as any).navigate('Legal')}
+            onPress={() => (navigation as any).navigate('Legal', { tab: 'support' })}
           >
             <View style={styles.settingInfo}>
               <Text style={[styles.settingTitle, { color: theme.text }]}>Contact Support</Text>
@@ -379,4 +411,15 @@ const styles = StyleSheet.create({
   premiumText: {
     fontFamily: 'Inter_700Bold',
   },
+  premiumBadge: {
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 8,
+},
+premiumBadgeText: {
+  color: '#FFFFFF',
+  fontSize: 12,
+  fontFamily: 'Inter_700Bold',
+  letterSpacing: 0.5,
+},
 });

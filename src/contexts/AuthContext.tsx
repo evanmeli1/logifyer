@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { syncLocalToCloud, syncCloudToLocal, clearLocalData } from '../services/syncService';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import Purchases from 'react-native-purchases';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -34,14 +35,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log('Auth state changed:', _event, session?.user?.email);
       setSession(session);
@@ -82,7 +81,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const url = result.url;
           console.log('Success URL:', url);
           
-          // Extract tokens from URL
           const params = new URLSearchParams(url.split('#')[1]);
           const access_token = params.get('access_token');
           const refresh_token = params.get('refresh_token');
@@ -93,10 +91,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               refresh_token,
             });
             
-            // Get user
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-              // Check if user has cloud data
+              // Link RevenueCat to this user
+              try {
+                await Purchases.logIn(user.id);
+                console.log('✅ RevenueCat linked to user');
+              } catch (rcError) {
+                console.log('RevenueCat login error:', rcError);
+              }
+
               const { data: cloudPeople } = await supabase
                 .from('people')
                 .select('id')
@@ -104,11 +108,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 .limit(1);
 
               if (cloudPeople && cloudPeople.length > 0) {
-                // User has cloud data - download it
                 console.log('📥 User has cloud data - syncing to local');
                 await syncCloudToLocal(user.id);
               } else {
-                // First time sign-in - upload local data
                 console.log('📤 First time sign-in - syncing local to cloud');
                 await syncLocalToCloud(user.id);
               }
@@ -123,65 +125,80 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signInWithApple = async () => {
-  try {
-    console.log('Starting Apple native sign-in...');
-    
-    const credential = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-    });
+    try {
+      console.log('Starting Apple native sign-in...');
+      
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
 
-    console.log('Apple credential received');
+      console.log('Apple credential received');
 
-    if (!credential.identityToken) {
-      throw new Error('No identity token received');
-    }
+      if (!credential.identityToken) {
+        throw new Error('No identity token received');
+      }
 
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: 'apple',
-      token: credential.identityToken,
-    });
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
 
-    if (error) {
-      console.error('Supabase Apple error:', error);
-      throw error;
-    }
+      if (error) {
+        console.error('Supabase Apple error:', error);
+        throw error;
+      }
 
-    console.log('✅ Apple sign-in successful');
+      console.log('✅ Apple sign-in successful');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: cloudPeople } = await supabase
-        .from('people')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Link RevenueCat to this user
+        try {
+          await Purchases.logIn(user.id);
+          console.log('✅ RevenueCat linked to user');
+        } catch (rcError) {
+          console.log('RevenueCat login error:', rcError);
+        }
 
-      if (cloudPeople && cloudPeople.length > 0) {
-        console.log('📥 Syncing cloud to local');
-        await syncCloudToLocal(user.id);
+        const { data: cloudPeople } = await supabase
+          .from('people')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (cloudPeople && cloudPeople.length > 0) {
+          console.log('📥 Syncing cloud to local');
+          await syncCloudToLocal(user.id);
+        } else {
+          console.log('📤 Syncing local to cloud');
+          await syncLocalToCloud(user.id);
+        }
+      }
+    } catch (error: any) {
+      if (error.code === 'ERR_REQUEST_CANCELED') {
+        console.log('User canceled Apple sign-in');
       } else {
-        console.log('📤 Syncing local to cloud');
-        await syncLocalToCloud(user.id);
+        console.error('Apple sign-in error:', error);
+        throw error;
       }
     }
-  } catch (error: any) {
-    if (error.code === 'ERR_REQUEST_CANCELED') {
-      console.log('User canceled Apple sign-in');
-    } else {
-      console.error('Apple sign-in error:', error);
-      throw error;
-    }
-  }
-};
+  };
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     
-    // Clear local data when signing out
+    // Log out of RevenueCat
+    try {
+      await Purchases.logOut();
+      console.log('✅ RevenueCat logged out');
+    } catch (rcError) {
+      console.log('RevenueCat logout error:', rcError);
+    }
+    
     clearLocalData();
   };
 
