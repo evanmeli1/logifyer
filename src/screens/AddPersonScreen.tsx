@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from 'react-native';
 import { addPerson } from '../database/db';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const RELATIONSHIP_TYPES = [
   { type: 'Friend', emoji: '👋' },
@@ -81,7 +83,12 @@ export default function AddPersonScreen({ navigation }: any) {
           entering={FadeInDown.delay(100).duration(400)}
           style={[styles.section, { backgroundColor: theme.card }]}
         >
-          <Text style={[styles.label, { color: theme.textMuted }]}>NAME</Text>
+          <View style={styles.labelRow}>
+            <Text style={[styles.label, { color: theme.textMuted }]}>NAME</Text>
+            <Text style={[styles.charCount, { color: name.length >= 20 ? '#EF4444' : theme.textMuted }]}>
+              {name.length}/25
+            </Text>
+          </View>
           <View style={[styles.inputContainer, { borderColor: name ? theme.primary : theme.divider, backgroundColor: theme.backgroundSecondary }]}>
             <View style={[styles.inputIcon, { backgroundColor: theme.primary + '15' }]}>
               <Text style={styles.inputIconText}>👤</Text>
@@ -92,7 +99,7 @@ export default function AddPersonScreen({ navigation }: any) {
               placeholderTextColor={theme.textMuted}
               value={name}
               onChangeText={setName}
-              autoFocus
+              maxLength={25}
             />
             {name.length > 0 && (
               <TouchableOpacity 
@@ -105,43 +112,54 @@ export default function AddPersonScreen({ navigation }: any) {
           </View>
         </Animated.View>
 
-        {/* Relationship Type */}
+        {/* Relationship Type - Floating Bubbles */}
         <Animated.View 
           entering={FadeInDown.delay(200).duration(400)}
           style={[styles.section, { backgroundColor: theme.card }]}
         >
           <Text style={[styles.label, { color: theme.textMuted }]}>RELATIONSHIP</Text>
-          <View style={styles.typeGrid}>
-            {RELATIONSHIP_TYPES.map((item) => (
-              <TouchableOpacity
-                key={item.type}
-                style={[
-                  styles.typeButton,
-                  { 
-                    borderColor: selectedType === item.type ? theme.primary : theme.divider, 
-                    backgroundColor: selectedType === item.type ? theme.primary + '10' : theme.card,
-                  },
-                ]}
-                onPress={() => setSelectedType(item.type)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.typeEmoji}>{item.emoji}</Text>
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    { color: selectedType === item.type ? theme.primary : theme.textSecondary },
-                    selectedType === item.type && styles.typeButtonTextSelected,
-                  ]}
-                >
-                  {item.type}
-                </Text>
-                {selectedType === item.type && (
-                  <View style={[styles.selectedIndicator, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.selectedCheck}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={styles.bubblesContainer}>
+            {RELATIONSHIP_TYPES.map((item) => {
+              const isSelected = selectedType === item.type;
+              return (
+                <View key={item.type} style={styles.bubbleWrapper}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedType(item.type)}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.bubble,
+                      {
+                        backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary,
+                        borderColor: isSelected ? theme.primary : theme.divider,
+                        shadowColor: isSelected ? theme.primary : '#000',
+                        shadowOpacity: isSelected ? 0.4 : 0.08,
+                        transform: [{ scale: isSelected ? 1.08 : 1 }],
+                      },
+                    ]}
+                  >
+                    <Text style={styles.bubbleEmoji}>{item.emoji}</Text>
+                    
+                    {isSelected && (
+                      <View style={styles.bubbleCheck}>
+                        <Text style={[styles.bubbleCheckText, { color: theme.primary }]}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <Text 
+                    style={[
+                      styles.bubbleName, 
+                      { 
+                        color: isSelected ? theme.primary : theme.text,
+                        fontFamily: isSelected ? 'Inter_700Bold' : 'Inter_500Medium',
+                      }
+                    ]}
+                  >
+                    {item.type}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </Animated.View>
 
@@ -273,7 +291,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 1,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
+  },
+  charCount: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -310,44 +337,56 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
-  typeGrid: {
+  // Floating Bubbles Styles
+  bubblesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 8,
   },
-  typeButton: {
-    width: '31%',
-    paddingVertical: 16,
-    borderRadius: 14,
-    borderWidth: 2,
+  bubbleWrapper: {
     alignItems: 'center',
-    position: 'relative',
+    width: (SCREEN_WIDTH - 80) / 3,
   },
-  typeEmoji: {
-    fontSize: 28,
+  bubble: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: 6,
     marginBottom: 8,
   },
-  typeButtonText: {
-    fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
+  bubbleEmoji: {
+    fontSize: 28,
   },
-  typeButtonTextSelected: {
-    fontFamily: 'Inter_700Bold',
-  },
-  selectedIndicator: {
+  bubbleCheck: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: -2,
+    right: -2,
     width: 20,
     height: 20,
     borderRadius: 10,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  selectedCheck: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  bubbleCheckText: {
+    fontSize: 11,
     fontFamily: 'Inter_700Bold',
+  },
+  bubbleName: {
+    fontSize: 12,
+    textAlign: 'center',
   },
   tipsSection: {
     flexDirection: 'row',

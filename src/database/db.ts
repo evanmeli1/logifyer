@@ -83,31 +83,44 @@ export const updateSettings = (majorMultiplier: number, timeDecayMonths: number,
 };
 
 export const seedCategories = () => {
-  const count = db.getFirstSync<{ count: number }>('SELECT COUNT(*) as count FROM categories WHERE is_custom = 0');
-  
-  if (count?.count === 0) {
-    const defaults = [
-        { name: 'Cancelled plans', emoji: '🚫', points: -3, positive: 0 },
-        { name: 'Lied/deceived', emoji: '🤥', points: -8, positive: 0 },
-        { name: 'Disrespected you', emoji: '😤', points: -8, positive: 0 },
-        { name: 'Always late', emoji: '⏰', points: -1, positive: 0 },
-        { name: 'Borrowed money unpaid', emoji: '💸', points: -5, positive: 0 },
-        { name: 'Only reaches out needing something', emoji: '🙄', points: -3, positive: 0 },
-        { name: 'Showed up when needed', emoji: '✅', points: 8, positive: 1 },
-        { name: 'Actually listened', emoji: '👂', points: 5, positive: 1 },
-        { name: 'Had your back', emoji: '🤝', points: 8, positive: 1 },
-        { name: 'Supported you', emoji: '💪', points: 5, positive: 1 },
-    ];
+  // First, clean up any duplicate default categories (keep lowest ID for each name)
+  db.execSync(`
+    DELETE FROM categories 
+    WHERE is_custom = 0 
+    AND id NOT IN (
+      SELECT MIN(id) FROM categories WHERE is_custom = 0 GROUP BY name
+    )
+  `);
 
-    defaults.forEach(cat => {
+  const defaults = [
+    { name: 'Cancelled plans', emoji: '🚫', points: -3, positive: 0 },
+    { name: 'Lied/deceived', emoji: '🤥', points: -8, positive: 0 },
+    { name: 'Disrespected you', emoji: '😤', points: -8, positive: 0 },
+    { name: 'Always late', emoji: '⏰', points: -1, positive: 0 },
+    { name: 'Borrowed money unpaid', emoji: '💸', points: -5, positive: 0 },
+    { name: 'Only reaches out needing something', emoji: '🙄', points: -3, positive: 0 },
+    { name: 'Showed up when needed', emoji: '✅', points: 8, positive: 1 },
+    { name: 'Actually listened', emoji: '👂', points: 5, positive: 1 },
+    { name: 'Had your back', emoji: '🤝', points: 8, positive: 1 },
+    { name: 'Supported you', emoji: '💪', points: 5, positive: 1 },
+  ];
+
+  // Only insert if category with that name doesn't exist
+  defaults.forEach(cat => {
+    const exists = db.getFirstSync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM categories WHERE name = ? AND is_custom = 0',
+      [cat.name]
+    );
+    
+    if (!exists || exists.count === 0) {
       db.runSync(
         'INSERT INTO categories (name, emoji, default_points, is_positive, is_custom) VALUES (?, ?, ?, ?, 0)',
         [cat.name, cat.emoji, cat.points, cat.positive]
       );
-    });
-    
-    console.log('Default categories seeded');
-  }
+    }
+  });
+  
+  console.log('Categories initialized (duplicates cleaned)');
 };
 
 export const addPerson = (name: string, relationshipType: string, photoUri?: string) => {

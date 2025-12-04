@@ -41,12 +41,12 @@ function HomeStack() {
       <Stack.Screen 
         name="PersonDetail" 
         component={PersonDetailScreen}
-        options={{ title: 'Person Details' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen 
         name="LogIncident" 
         component={LogIncidentScreen}
-        options={{ title: 'Log Incident' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

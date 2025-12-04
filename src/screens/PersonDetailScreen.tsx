@@ -1,14 +1,17 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Animated } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson, resetPersonScore } from '../database/db';
 import { Person } from '../types';
 import { generatePersonInsights, AIInsightsResult } from '../services/ai';
+import { useTheme } from '../theme';
 
 export default function PersonDetailScreen({ route }: any) {
+  const { theme } = useTheme();
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIncidents, setSelectedIncidents] = useState<number[]>([]);  
-  const { personId } = route.params;
+  const { personId } = route.params || {};
   const navigation = useNavigation();
   const [person, setPerson] = useState<Person | null>(null);
   const [score, setScore] = useState(0);
@@ -54,7 +57,7 @@ export default function PersonDetailScreen({ route }: any) {
   const handleDelete = () => {
     Alert.alert(
       'Delete Person',
-      `Permanently delete ${person?.name} and all their incidents? Type DELETE to confirm.`,
+      `Permanently delete ${person?.name} and all their incidents?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -112,11 +115,11 @@ export default function PersonDetailScreen({ route }: any) {
   };
 
   const getHealthGrade = (score: number) => {
-    if (score >= 80) return { grade: 'A', color: '#4CAF50' };
-    if (score >= 60) return { grade: 'B', color: '#8BC34A' };
-    if (score >= 40) return { grade: 'C', color: '#FFC107' };
-    if (score >= 20) return { grade: 'D', color: '#FF9800' };
-    return { grade: 'F', color: '#F44336' };
+    if (score >= 80) return { grade: 'A', color: '#10B981', bg: '#10B98115' };
+    if (score >= 60) return { grade: 'B', color: '#22C55E', bg: '#22C55E15' };
+    if (score >= 40) return { grade: 'C', color: '#F59E0B', bg: '#F59E0B15' };
+    if (score >= 20) return { grade: 'D', color: '#F97316', bg: '#F9731615' };
+    return { grade: 'F', color: '#EF4444', bg: '#EF444415' };
   };
 
   const handleDeleteIncident = (incidentId: number) => {
@@ -189,7 +192,11 @@ export default function PersonDetailScreen({ route }: any) {
 
     return (
       <TouchableOpacity
-        style={[styles.incidentCard, isSelected && styles.incidentCardSelected]}
+        style={[
+          styles.incidentCard,
+          { backgroundColor: theme.card },
+          isSelected && { backgroundColor: theme.primary + '15', borderColor: theme.primary, borderWidth: 1.5 }
+        ]}
         onPress={() => {
           if (selectionMode) {
             toggleSelection(item.id);
@@ -200,29 +207,45 @@ export default function PersonDetailScreen({ route }: any) {
             handleDeleteIncident(item.id);
           }
         }}
+        activeOpacity={0.7}
       >
         {selectionMode && (
-          <View style={styles.checkbox}>
+          <View style={[
+            styles.checkbox,
+            { borderColor: theme.primary },
+            isSelected && { backgroundColor: theme.primary }
+          ]}>
             {isSelected && <Text style={styles.checkmark}>✓</Text>}
           </View>
         )}
         <View style={styles.incidentContent}>
           <View style={styles.incidentHeader}>
             <View style={styles.incidentTitleRow}>
-              <Text style={styles.incidentEmoji}>{item.category_emoji}</Text>
-              <Text style={styles.incidentName}>{item.category_name}</Text>
+              <View style={[
+                styles.emojiContainer,
+                { backgroundColor: isPositive ? '#10B98112' : '#EF444412' }
+              ]}>
+                <Text style={styles.incidentEmoji}>{item.category_emoji}</Text>
+              </View>
+              <View style={styles.incidentInfo}>
+                <Text style={[styles.incidentName, { color: theme.text }]}>{item.category_name}</Text>
+                <Text style={[styles.incidentTime, { color: theme.textMuted }]}>{formatDate(item.timestamp)}</Text>
+              </View>
+            </View>
+            <View style={styles.pointsContainer}>
               {isMajor && (
-                <View style={styles.majorBadge}>
+                <View style={[styles.majorBadge, { backgroundColor: '#EF4444' }]}>
                   <Text style={styles.majorBadgeText}>MAJOR</Text>
                 </View>
               )}
+              <Text style={[styles.incidentPoints, { color: isPositive ? '#10B981' : '#EF4444' }]}>
+                {item.points > 0 ? '+' : ''}{item.points}
+              </Text>
             </View>
-            <Text style={[styles.incidentPoints, { color: isPositive ? '#4CAF50' : '#F44336' }]}>
-              {item.points > 0 ? '+' : ''}{item.points}
-            </Text>
           </View>
-          {item.note && <Text style={styles.incidentNote}>{item.note}</Text>}
-          <Text style={styles.incidentTime}>{formatDate(item.timestamp)}</Text>
+          {item.note && (
+            <Text style={[styles.incidentNote, { color: theme.textMuted }]}>{item.note}</Text>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -230,8 +253,8 @@ export default function PersonDetailScreen({ route }: any) {
 
   if (!person) {
     return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <Text style={{ color: theme.text }}>Loading...</Text>
       </View>
     );
   }
@@ -239,198 +262,253 @@ export default function PersonDetailScreen({ route }: any) {
   const health = getHealthGrade(score);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerInfo}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        
+        <View style={styles.headerContent}>
+          <View style={styles.avatarLarge}>
+            <Text style={styles.avatarText}>{person.name.charAt(0).toUpperCase()}</Text>
+          </View>
           <Text style={styles.personName}>{person.name}</Text>
           <Text style={styles.relationshipType}>{person.relationship_type}</Text>
-        </View>
-        <View style={styles.scoreContainer}>
-          <Text style={[styles.score, { color: health.color }]}>{score}</Text>
-          <View style={[styles.gradeBadge, { backgroundColor: health.color }]}>
-            <Text style={styles.gradeText}>{health.grade}</Text>
+          
+          {/* Score Display */}
+          <View style={styles.scoreCard}>
+            <View style={styles.scoreMain}>
+              <Text style={[styles.scoreNumber, { color: health.color }]}>{score}</Text>
+              <View style={[styles.gradeBadge, { backgroundColor: health.color }]}>
+                <Text style={styles.gradeText}>{health.grade}</Text>
+              </View>
+            </View>
+            <Text style={styles.scoreLabel}>Relationship Score</Text>
           </View>
         </View>
+
         <TouchableOpacity 
           style={styles.menuButton}
           onPress={() => setMenuVisible(!menuVisible)}
         >
-          <Text style={styles.menuButtonText}>⋮</Text>
+          <Text style={styles.menuButtonText}>⋯</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
+      {/* Dropdown Menu */}
       {menuVisible && (
-        <View style={styles.menu}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); setSelectionMode(true); }}>
-            <Text style={styles.menuItemText}>☑️ Select Multiple</Text>
+        <View style={[styles.menu, { backgroundColor: theme.card }]}>
+          <TouchableOpacity 
+            style={[styles.menuItem, { borderBottomColor: theme.divider }]} 
+            onPress={() => { setMenuVisible(false); setSelectionMode(true); }}
+          >
+            <Text style={[styles.menuItemText, { color: theme.text }]}>☑️  Select Multiple</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleResetScore(); }}>
-            <Text style={styles.menuItemText}>🔄 Reset Score</Text>
+          <TouchableOpacity 
+            style={[styles.menuItem, { borderBottomColor: theme.divider }]} 
+            onPress={() => { setMenuVisible(false); handleResetScore(); }}
+          >
+            <Text style={[styles.menuItemText, { color: theme.text }]}>🔄  Reset Score</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleDelete(); }}>
-            <Text style={[styles.menuItemText, styles.menuItemDanger]}>🗑️ Delete Person</Text>
+          <TouchableOpacity 
+            style={[styles.menuItem, { borderBottomWidth: 0 }]} 
+            onPress={() => { setMenuVisible(false); handleDelete(); }}
+          >
+            <Text style={[styles.menuItemText, { color: '#EF4444' }]}>🗑️  Delete Person</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <View style={styles.statsBar}>
+      {/* Stats Bar */}
+      <View style={[styles.statsBar, { backgroundColor: theme.card }]}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{incidents.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+          <Text style={[styles.statValue, { color: theme.text }]}>{incidents.length}</Text>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Total</Text>
         </View>
+        <View style={[styles.statDivider, { backgroundColor: theme.divider }]} />
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#F44336' }]}>
+          <Text style={[styles.statValue, { color: '#EF4444' }]}>
             {incidents.filter(i => i.points < 0).length}
           </Text>
-          <Text style={styles.statLabel}>Negative</Text>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Negative</Text>
         </View>
+        <View style={[styles.statDivider, { backgroundColor: theme.divider }]} />
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: '#4CAF50' }]}>
+          <Text style={[styles.statValue, { color: '#10B981' }]}>
             {incidents.filter(i => i.points > 0).length}
           </Text>
-          <Text style={styles.statLabel}>Positive</Text>
+          <Text style={[styles.statLabel, { color: theme.textMuted }]}>Positive</Text>
         </View>
       </View>
-      
-      <View style={styles.patternsSection}>
-        <Text style={styles.patternsTitle}>Patterns</Text>
-        
-        {incidents.length > 0 && (
+
+      <FlatList
+        data={incidents}
+        renderItem={renderIncident}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={() => (
           <>
-            <View style={styles.patternRow}>
-              <Text style={styles.patternLabel}>Biggest Issue:</Text>
-              <Text style={styles.patternValue}>
-                {(() => {
-                  const negativeIncidents = incidents.filter(i => i.points < 0);
-                  if (negativeIncidents.length === 0) return 'None';
-                  const counts: any = {};
-                  negativeIncidents.forEach(i => {
-                    counts[i.category_name] = (counts[i.category_name] || 0) + 1;
-                  });
-                  const biggest = Object.entries(counts).sort((a: any, b: any) => b[1] - a[1])[0];
-                  return `${biggest[0]} (${biggest[1]}x)`;
-                })()}
-              </Text>
+            {/* Patterns Section */}
+            <View style={[styles.sectionCard, { backgroundColor: theme.card }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Patterns</Text>
+              
+              {incidents.length > 0 ? (
+                <View style={styles.patternsList}>
+                  <View style={[styles.patternRow, { borderBottomColor: theme.divider }]}>
+                    <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Biggest Issue</Text>
+                    <Text style={[styles.patternValue, { color: theme.text }]}>
+                      {(() => {
+                        const negativeIncidents = incidents.filter(i => i.points < 0);
+                        if (negativeIncidents.length === 0) return 'None 🎉';
+                        const counts: any = {};
+                        negativeIncidents.forEach(i => {
+                          counts[i.category_name] = (counts[i.category_name] || 0) + 1;
+                        });
+                        const biggest = Object.entries(counts).sort((a: any, b: any) => b[1] - a[1])[0];
+                        return `${biggest[0]} (${biggest[1]}x)`;
+                      })()}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.patternRow, { borderBottomColor: theme.divider }]}>
+                    <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Trend</Text>
+                    <Text style={[styles.patternValue, { color: theme.text }]}>
+                      {(() => {
+                        if (incidents.length < 2) return '—';
+                        const recent = incidents.slice(0, Math.ceil(incidents.length / 2));
+                        const older = incidents.slice(Math.ceil(incidents.length / 2));
+                        const recentAvg = recent.reduce((sum, i) => sum + i.points, 0) / recent.length;
+                        const olderAvg = older.reduce((sum, i) => sum + i.points, 0) / older.length;
+                        if (recentAvg > olderAvg + 2) return '📈 Improving';
+                        if (recentAvg < olderAvg - 2) return '📉 Declining';
+                        return '→ Stable';
+                      })()}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.patternRow, { borderBottomColor: theme.divider }]}>
+                    <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Last Interaction</Text>
+                    <Text style={[styles.patternValue, { color: theme.text }]}>
+                      {formatDate(incidents[0].timestamp)}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.patternRow, { borderBottomWidth: 0 }]}>
+                    <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Positive Rate</Text>
+                    <Text style={[styles.patternValue, { color: '#10B981' }]}>
+                      {Math.round((incidents.filter(i => i.points > 0).length / incidents.length) * 100)}%
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <Text style={[styles.emptyPatterns, { color: theme.textMuted }]}>
+                  Log some incidents to see patterns
+                </Text>
+              )}
             </View>
 
-            <View style={styles.patternRow}>
-              <Text style={styles.patternLabel}>Trend:</Text>
-              <Text style={styles.patternValue}>
-                {(() => {
-                  if (incidents.length < 2) return '—';
-                  const recent = incidents.slice(0, Math.ceil(incidents.length / 2));
-                  const older = incidents.slice(Math.ceil(incidents.length / 2));
-                  const recentAvg = recent.reduce((sum, i) => sum + i.points, 0) / recent.length;
-                  const olderAvg = older.reduce((sum, i) => sum + i.points, 0) / older.length;
-                  if (recentAvg > olderAvg + 2) return '📈 Improving';
-                  if (recentAvg < olderAvg - 2) return '📉 Declining';
-                  return '→ Stable';
-                })()}
-              </Text>
+            {/* AI Insights Section */}
+            <View style={[styles.sectionCard, { backgroundColor: theme.card }]}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>🤖 AI Insights</Text>
+                <View style={[styles.premiumBadge, { backgroundColor: theme.primary + '20' }]}>
+                  <Text style={[styles.premiumBadgeText, { color: theme.primary }]}>PRO</Text>
+                </View>
+              </View>
+              
+              {!aiInsights ? (
+                <TouchableOpacity 
+                  style={[styles.generateButton, { backgroundColor: theme.primary }]}
+                  onPress={() => handleGenerateInsights(false)}
+                  disabled={loadingInsights}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.generateButtonText}>
+                    {loadingInsights ? 'Analyzing...' : 'Generate Insights'}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.insightsBox, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
+                  <View style={styles.insightsHeader}>
+                    <Text style={[styles.insightsTimestamp, { color: theme.textMuted }]}>
+                      {aiInsights.isCached ? '📦 Cached' : '✨ Fresh'} • {aiInsights.generatedAt}
+                    </Text>
+                  </View>
+                  <Text style={[styles.insightsText, { color: theme.text }]}>{aiInsights.content}</Text>
+                  <TouchableOpacity 
+                    style={styles.regenerateButton}
+                    onPress={() => handleGenerateInsights(true)}
+                    disabled={loadingInsights}
+                  >
+                    <Text style={[styles.regenerateButtonText, { color: theme.primary }]}>
+                      {loadingInsights ? 'Analyzing...' : '🔄 Regenerate'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
-            <View style={styles.patternRow}>
-              <Text style={styles.patternLabel}>Last Interaction:</Text>
-              <Text style={styles.patternValue}>
-                {formatDate(incidents[0].timestamp)}
+            {/* Incidents Header */}
+            {incidents.length > 0 && (
+              <Text style={[styles.incidentsHeader, { color: theme.text }]}>
+                Recent Activity
               </Text>
-            </View>
-
-            <View style={styles.patternRow}>
-              <Text style={styles.patternLabel}>Positive Rate:</Text>
-              <Text style={styles.patternValue}>
-                {Math.round((incidents.filter(i => i.points > 0).length / incidents.length) * 100)}%
-              </Text>
-            </View>
+            )}
           </>
         )}
-      </View>
-
-      <View style={styles.aiSection}>
-        <View style={styles.aiSectionHeader}>
-          <Text style={styles.aiSectionTitle}>🤖 AI Insights</Text>
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumBadgeText}>PREMIUM</Text>
-          </View>
-        </View>
-        
-        {!aiInsights ? (
-          <TouchableOpacity 
-            style={styles.generateButton}
-            onPress={() => handleGenerateInsights(false)}
-            disabled={loadingInsights}
-          >
-            {loadingInsights ? (
-              <Text style={styles.generateButtonText}>Analyzing...</Text>
-            ) : (
-              <Text style={styles.generateButtonText}>Generate AI Insights</Text>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.insightsBox}>
-            <View style={styles.insightsHeader}>
-              <Text style={styles.insightsTimestamp}>
-                {aiInsights.isCached ? '📦 Cached' : '✨ Fresh'} • {aiInsights.generatedAt}
-              </Text>
-            </View>
-            <Text style={styles.insightsText}>{aiInsights.content}</Text>
-            <TouchableOpacity 
-              style={styles.regenerateButton}
-              onPress={() => handleGenerateInsights(true)}
-              disabled={loadingInsights}
-            >
-              <Text style={styles.regenerateButtonText}>
-                {loadingInsights ? 'Analyzing...' : '🔄 Regenerate'}
-              </Text>
-            </TouchableOpacity>
+        ListEmptyComponent={() => (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📝</Text>
+            <Text style={[styles.emptyText, { color: theme.text }]}>No incidents logged yet</Text>
+            <Text style={[styles.emptySubtext, { color: theme.textMuted }]}>
+              Tap + to start tracking interactions
+            </Text>
           </View>
         )}
-      </View>
+      />
 
-      {incidents.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>📝</Text>
-          <Text style={styles.emptyText}>No incidents logged yet</Text>
-          <Text style={styles.emptySubtext}>Start tracking interactions</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={incidents}
-          renderItem={renderIncident}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
-
+      {/* Selection Toolbar */}
       {selectionMode ? (
-        <View style={styles.selectionToolbar}>
+        <View style={[styles.selectionToolbar, { backgroundColor: theme.card, borderTopColor: theme.divider }]}>
           <TouchableOpacity
-            style={styles.toolbarButton}
+            style={[styles.toolbarButton, { backgroundColor: theme.backgroundSecondary }]}
             onPress={() => {
               setSelectionMode(false);
               setSelectedIncidents([]);
             }}
           >
-            <Text style={styles.toolbarButtonText}>Cancel</Text>
+            <Text style={[styles.toolbarButtonText, { color: theme.text }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.selectedCount}>{selectedIncidents.length} selected</Text>
+          <Text style={[styles.selectedCount, { color: theme.text }]}>{selectedIncidents.length} selected</Text>
           <TouchableOpacity
             style={[styles.toolbarButton, styles.deleteButton]}
             onPress={handleBulkDelete}
             disabled={selectedIncidents.length === 0}
           >
-            <Text style={[styles.toolbarButtonText, styles.deleteButtonText]}>Delete</Text>
+            <Text style={styles.deleteButtonText}>Delete</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <TouchableOpacity 
           style={styles.fab}
-          onPress={() => (navigation as any).navigate('Home', { 
-            screen: 'LogIncident', 
-            params: { personId } 
-          })}
+          onPress={() => (navigation as any).navigate('LogIncident', { personId: personId })}
+          activeOpacity={0.9}
         >
-          <Text style={styles.fabText}>+</Text>
+          <LinearGradient
+            colors={[theme.primary, theme.primaryLight]}
+            style={styles.fabGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.fabText}>+</Text>
+          </LinearGradient>
         </TouchableOpacity>
       )}
     </View>
@@ -440,103 +518,281 @@ export default function PersonDetailScreen({ route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: 'white',
-    padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingTop: 50,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    position: 'relative',
   },
-  headerInfo: {
-    flex: 1,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+  },
+  backIcon: {
+    fontSize: 22,
+    color: '#FFF',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  headerContent: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  avatarLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontFamily: 'Inter_700Bold',
+    color: '#FFF',
   },
   personName: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Inter_700Bold',
+    color: '#FFF',
     marginBottom: 4,
   },
   relationshipType: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 16,
   },
-  scoreContainer: {
+  scoreCard: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    gap: 4,
   },
-  score: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  scoreMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  scoreNumber: {
+    fontSize: 36,
+    fontFamily: 'Inter_700Bold',
   },
   gradeBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   gradeText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: '#FFF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+  },
+  scoreLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuButtonText: {
+    fontSize: 20,
+    color: '#FFF',
+    fontFamily: 'Inter_700Bold',
+  },
+  menu: {
+    position: 'absolute',
+    top: 100,
+    right: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1000,
+    minWidth: 180,
+  },
+  menuItem: {
+    padding: 14,
+    borderBottomWidth: 1,
+  },
+  menuItemText: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
   },
   statsBar: {
-    backgroundColor: 'white',
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    marginHorizontal: 20,
+    marginTop: -12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 22,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    fontFamily: 'Inter_500Medium',
   },
   listContent: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  sectionCard: {
+    borderRadius: 16,
     padding: 16,
-    paddingBottom: 80,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+    flex: 1,
+  },
+  patternsList: {},
+  patternRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  patternLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+  },
+  patternValue: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  emptyPatterns: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  premiumBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  premiumBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter_700Bold',
+  },
+  generateButton: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  generateButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  insightsBox: {
+    padding: 14,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+  },
+  insightsHeader: {
+    marginBottom: 8,
+  },
+  insightsTimestamp: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  insightsText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  regenerateButton: {
+    alignSelf: 'flex-start',
+  },
+  regenerateButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  incidentsHeader: {
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 12,
+    marginTop: 8,
   },
   incidentCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  incidentCardSelected: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 2,
-    borderColor: '#2196F3',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     borderWidth: 2,
-    borderColor: '#2196F3',
-    borderRadius: 4,
+    borderRadius: 6,
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkmark: {
-    color: '#2196F3',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
   },
   incidentContent: {
     flex: 1,
@@ -544,249 +800,133 @@ const styles = StyleSheet.create({
   incidentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
   },
   incidentTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    gap: 12,
+  },
+  emojiContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   incidentEmoji: {
-    fontSize: 24,
-    marginRight: 8,
+    fontSize: 22,
   },
-  incidentName: {
-    fontSize: 16,
-    fontWeight: '600',
+  incidentInfo: {
     flex: 1,
   },
-  majorBadge: {
-    backgroundColor: '#F44336',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  majorBadgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  incidentPoints: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  incidentNote: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+  incidentName: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 2,
   },
   incidentTime: {
     fontSize: 12,
-    color: '#999',
+    fontFamily: 'Inter_400Regular',
+  },
+  pointsContainer: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  majorBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  majorBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontFamily: 'Inter_700Bold',
+  },
+  incidentPoints: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+  },
+  incidentNote: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    paddingVertical: 40,
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+    fontSize: 48,
+    marginBottom: 12,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontFamily: 'Inter_600SemiBold',
     marginBottom: 4,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2196F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
-  },
-  fabText: {
-    color: 'white',
-    fontSize: 32,
-    fontWeight: '300',
-  },
-  menuButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  menuButtonText: {
-    fontSize: 24,
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  menu: {
-    position: 'absolute',
-    top: 80,
-    right: 16,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 1000,
-  },
-  menuItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  menuItemText: {
-    fontSize: 16,
-  },
-  menuItemDanger: {
-    color: '#F44336',
-  },
-  patternsSection: {
-    backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 12,
-  },
-  patternsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  patternRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  patternLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  patternValue: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'Inter_400Regular',
   },
   selectionToolbar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
+    paddingBottom: 32,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
   },
   toolbarButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
   },
   deleteButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#EF4444',
   },
   toolbarButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
   },
   deleteButtonText: {
-    color: 'white',
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
   },
   selectedCount: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  aiSection: {
-    backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 12,
-  },
-  aiSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  aiSectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  premiumBadge: {
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  premiumBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  generateButton: {
-    backgroundColor: '#2196F3',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  generateButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  insightsBox: {
-    backgroundColor: '#F5F5F5',
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
-  },
-  insightsText: {
     fontSize: 15,
-    lineHeight: 22,
-    color: '#333',
-    marginBottom: 12,
+    fontFamily: 'Inter_600SemiBold',
   },
-  regenerateButton: {
-    alignSelf: 'flex-start',
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  regenerateButtonText: {
-    color: '#2196F3',
-    fontSize: 14,
-    fontWeight: '600',
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  insightsHeader: {
-    marginBottom: 8,
-  },
-  insightsTimestamp: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+  fabText: {
+    color: '#FFF',
+    fontSize: 28,
+    fontFamily: 'Inter_300Light',
   },
 });
