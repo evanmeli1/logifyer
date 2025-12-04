@@ -131,6 +131,44 @@ export const addPerson = (name: string, relationshipType: string, photoUri?: str
   return result.lastInsertRowId;
 };
 
+export const updatePerson = (personId: number, updates: Partial<Person>) => {
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.name !== undefined) {
+    fields.push('name = ?');
+    values.push(updates.name);
+  }
+
+  if (updates.photo_uri !== undefined) {
+    fields.push('photo_uri = ?');
+    values.push(updates.photo_uri);
+  }
+
+  if (updates.relationship_type !== undefined) {
+    fields.push('relationship_type = ?');
+    values.push(updates.relationship_type);
+  }
+
+  if (updates.archived !== undefined) {
+    fields.push('archived = ?');
+    values.push(updates.archived ? 1 : 0);
+  }
+
+  if (updates.is_favorite !== undefined) {
+    fields.push('is_favorite = ?');
+    values.push(updates.is_favorite ? 1 : 0);
+  }
+
+  // nothing to update
+  if (fields.length === 0) return;
+
+  db.runSync(
+    `UPDATE people SET ${fields.join(', ')} WHERE id = ?`,
+    [...values, personId]
+  );
+};
+
 export const getAllPeople = () => {
   return db.getAllSync('SELECT * FROM people ORDER BY created_at DESC');
 };

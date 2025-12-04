@@ -1,11 +1,52 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Animated } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  Alert, 
+  Modal,
+  ScrollView,
+  TextInput,
+  Pressable,
+  Dimensions,
+} from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson, resetPersonScore } from '../database/db';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming,
+  withDelay,
+  FadeIn,
+  FadeOut,
+  SlideInRight,
+} from 'react-native-reanimated';
+import { 
+  getPersonById, 
+  getIncidentsByPerson, 
+  getPersonScore, 
+  deleteIncident, 
+  deletePerson, 
+  resetPersonScore,
+  getAllRelationshipTypes,
+  checkPersonNameExists,
+  getDatabase,
+} from '../database/db';
 import { Person } from '../types';
 import { generatePersonInsights, AIInsightsResult } from '../services/ai';
 import { useTheme } from '../theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface RelationshipType {
+  id: number;
+  type: string;
+  emoji: string;
+  is_custom: number;
+}
 
 export default function PersonDetailScreen({ route }: any) {
   const { theme } = useTheme();
@@ -20,6 +61,40 @@ export default function PersonDetailScreen({ route }: any) {
   const [aiInsights, setAiInsights] = useState<AIInsightsResult | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
 
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editRelationship, setEditRelationship] = useState('');
+  const [relationshipTypes, setRelationshipTypes] = useState<RelationshipType[]>([]);
+
+  // Menu animation
+  const menuScale = useSharedValue(0);
+  const menuOpacity = useSharedValue(0);
+
+  const openMenu = () => {
+    setMenuVisible(true);
+    menuScale.value = withTiming(1, { duration: 200 });
+    menuOpacity.value = withTiming(1, { duration: 150 });
+  };
+
+  const closeMenu = () => {
+    menuScale.value = withSpring(0, { damping: 20, stiffness: 400 });
+    menuOpacity.value = withTiming(0, { duration: 100 });
+    setTimeout(() => setMenuVisible(false), 150);
+  };
+
+  const menuAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: menuScale.value },
+      { translateY: (1 - menuScale.value) * -20 },
+    ],
+    opacity: menuOpacity.value,
+  }));
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: menuOpacity.value * 0.3,
+  }));
+
   const loadData = useCallback(() => {
     const personData = getPersonById(personId) as Person;
     const incidentsData = getIncidentsByPerson(personId);
@@ -33,61 +108,118 @@ export default function PersonDetailScreen({ route }: any) {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      // Load relationship types for edit modal
+      try {
+        const types = getAllRelationshipTypes() as RelationshipType[];
+        setRelationshipTypes(types);
+      } catch (e) {
+        console.log('Could not load relationship types');
+      }
     }, [loadData])
   );
 
-  const handleResetScore = () => {
-    Alert.alert(
-      'Reset Score',
-      `Delete all incidents for ${person?.name}? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: () => {
-            resetPersonScore(personId);
-            loadData();
-          },
-        },
-      ]
+  const openEditModal = () => {
+    if (person) {
+      setEditName(person.name);
+      setEditRelationship(person.relationship_type);
+    }
+    closeMenu();
+    setTimeout(() => setShowEditModal(true), 200);
+  };
+
+  const handleSaveEdit = () => {
+    if (!person) return;
+    
+    const trimmedName = editName.trim();
+    
+    // Validation
+    if (trimmedName.length < 2) {
+      Alert.alert('Error', 'Name must be at least 2 characters');
+      return;
+    }
+    
+    // Check for duplicate (but allow keeping same name)
+    if (trimmedName.toLowerCase() !== person.name.toLowerCase() && checkPersonNameExists(trimmedName)) {
+      Alert.alert('Error', 'A person with this name already exists');
+      return;
+    }
+
+    // Update in database
+    const db = getDatabase();
+    db.runSync(
+      'UPDATE people SET name = ?, relationship_type = ? WHERE id = ?',
+      [trimmedName, editRelationship, personId]
     );
+
+    setShowEditModal(false);
+    loadData();
+  };
+
+  const isEditValid = () => {
+    const trimmedName = editName.trim();
+    if (trimmedName.length < 2) return false;
+    if (trimmedName.toLowerCase() !== person?.name.toLowerCase() && checkPersonNameExists(trimmedName)) return false;
+    return true;
+  };
+
+  const handleResetScore = () => {
+    closeMenu();
+    setTimeout(() => {
+      Alert.alert(
+        'Reset Score',
+        `Delete all incidents for ${person?.name}? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Reset',
+            style: 'destructive',
+            onPress: () => {
+              resetPersonScore(personId);
+              loadData();
+            },
+          },
+        ]
+      );
+    }, 200);
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Person',
-      `Permanently delete ${person?.name} and all their incidents?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.prompt(
-              'Confirm Delete',
-              'Type DELETE to confirm',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: (text?: string) => {
-                    if (text === 'DELETE') {
-                      deletePerson(personId);
-                      navigation.goBack();
-                    } else {
-                      Alert.alert('Error', 'You must type DELETE to confirm');
-                    }
+    closeMenu();
+    setTimeout(() => {
+      Alert.alert(
+        'Delete Person',
+        `Permanently delete ${person?.name} and all their incidents?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              Alert.prompt(
+                'Confirm Delete',
+                'Type DELETE to confirm',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: (text?: string) => {
+                      if (text === 'DELETE') {
+                        deletePerson(personId);
+                        navigation.goBack();
+                      } else {
+                        Alert.alert('Error', 'You must type DELETE to confirm');
+                      }
+                    },
                   },
-                },
-              ],
-              'plain-text'
-            );
+                ],
+                'plain-text'
+              );
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }, 200);
   };
 
   const handleGenerateInsights = async (forceRegenerate: boolean = false) => {
@@ -185,6 +317,11 @@ export default function PersonDetailScreen({ route }: any) {
     );
   };
 
+  const getRelationshipEmoji = (type: string) => {
+    const found = relationshipTypes.find(r => r.type === type);
+    return found?.emoji || '👤';
+  };
+
   const renderIncident = ({ item }: any) => {
     const isMajor = item.is_major === 1;
     const isPositive = item.points > 0;
@@ -279,7 +416,12 @@ export default function PersonDetailScreen({ route }: any) {
             <Text style={styles.avatarText}>{person.name.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.personName}>{person.name}</Text>
-          <Text style={styles.relationshipType}>{person.relationship_type}</Text>
+          
+          {/* Relationship pill with emoji */}
+          <View style={styles.relationshipPill}>
+            <Text style={styles.relationshipEmoji}>{getRelationshipEmoji(person.relationship_type)}</Text>
+            <Text style={styles.relationshipType}>{person.relationship_type}</Text>
+          </View>
           
           {/* Score Display */}
           <View style={styles.scoreCard}>
@@ -295,35 +437,218 @@ export default function PersonDetailScreen({ route }: any) {
 
         <TouchableOpacity 
           style={styles.menuButton}
-          onPress={() => setMenuVisible(!menuVisible)}
+          onPress={openMenu}
         >
           <Text style={styles.menuButtonText}>⋯</Text>
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* Dropdown Menu */}
+      {/* Floating Card Menu */}
       {menuVisible && (
-        <View style={[styles.menu, { backgroundColor: theme.card }]}>
-          <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomColor: theme.divider }]} 
-            onPress={() => { setMenuVisible(false); setSelectionMode(true); }}
+        <>
+          <Animated.View 
+            style={[styles.menuOverlayBg, overlayAnimatedStyle]}
           >
-            <Text style={[styles.menuItemText, { color: theme.text }]}>☑️  Select Multiple</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomColor: theme.divider }]} 
-            onPress={() => { setMenuVisible(false); handleResetScore(); }}
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
+          </Animated.View>
+          
+          <Animated.View 
+            style={[
+              styles.floatingMenu, 
+              { backgroundColor: theme.card },
+              menuAnimatedStyle,
+            ]}
           >
-            <Text style={[styles.menuItemText, { color: theme.text }]}>🔄  Reset Score</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.menuItem, { borderBottomWidth: 0 }]} 
-            onPress={() => { setMenuVisible(false); handleDelete(); }}
-          >
-            <Text style={[styles.menuItemText, { color: '#EF4444' }]}>🗑️  Delete Person</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Menu Arrow/Triangle */}
+            <View style={[styles.menuArrow, { borderBottomColor: theme.card }]} />
+            
+            {/* Edit */}
+            <TouchableOpacity 
+              style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]}
+              onPress={openEditModal}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: theme.primary + '15' }]}>
+                <Text style={styles.menuItemIconText}>✏️</Text>
+              </View>
+              <Text style={[styles.floatingMenuText, { color: theme.text }]}>Edit Person</Text>
+              <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            {/* Select */}
+            <TouchableOpacity 
+              style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]}
+              onPress={() => { closeMenu(); setTimeout(() => setSelectionMode(true), 200); }}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: '#3B82F615' }]}>
+                <Text style={styles.menuItemIconText}>☑️</Text>
+              </View>
+              <Text style={[styles.floatingMenuText, { color: theme.text }]}>Select Multiple</Text>
+              <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            {/* Reset */}
+            <TouchableOpacity 
+              style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]}
+              onPress={handleResetScore}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: '#F59E0B15' }]}>
+                <Text style={styles.menuItemIconText}>🔄</Text>
+              </View>
+              <Text style={[styles.floatingMenuText, { color: theme.text }]}>Reset Score</Text>
+              <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            {/* Delete */}
+            <TouchableOpacity 
+              style={[styles.floatingMenuItem, { borderBottomWidth: 0 }]}
+              onPress={handleDelete}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: '#EF444415' }]}>
+                <Text style={styles.menuItemIconText}>🗑️</Text>
+              </View>
+              <Text style={[styles.floatingMenuText, { color: '#EF4444' }]}>Delete Person</Text>
+              <Text style={[styles.menuItemArrow, { color: '#EF4444' }]}>›</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </>
       )}
+
+      {/* Edit Person Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowEditModal(false)}
+        >
+          <Pressable 
+            style={[styles.editSheet, { backgroundColor: theme.card }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.sheetHandle, { backgroundColor: theme.divider }]} />
+            
+            <View style={styles.editHeader}>
+              <Text style={[styles.sheetTitle, { color: theme.text }]}>Edit Person</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <Text style={[styles.closeButton, { color: theme.textMuted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Avatar Preview */}
+            <View style={[styles.editAvatarContainer, { backgroundColor: theme.primary + '15' }]}>
+              <Text style={[styles.editAvatarText, { color: theme.primary }]}>
+                {editName ? editName.charAt(0).toUpperCase() : '?'}
+              </Text>
+            </View>
+
+            {/* Name Input */}
+            <View style={styles.editSection}>
+              <View style={styles.labelRow}>
+                <Text style={[styles.editLabel, { color: theme.textMuted }]}>NAME</Text>
+                {editName.trim().length === 1 && (
+                  <Text style={styles.errorText}>Too short</Text>
+                )}
+                {editName.trim().length >= 2 && 
+                 editName.trim().toLowerCase() !== person?.name.toLowerCase() && 
+                 checkPersonNameExists(editName.trim()) && (
+                  <Text style={styles.errorText}>Already exists</Text>
+                )}
+                <Text style={[
+                  styles.charCount, 
+                  { color: editName.length >= 20 ? '#EF4444' : theme.textMuted }
+                ]}>
+                  {editName.length}/25
+                </Text>
+              </View>
+              <TextInput
+                style={[
+                  styles.editInput,
+                  { 
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: editName.trim().length === 0 
+                      ? theme.divider 
+                      : editName.trim().length === 1 
+                        ? '#EF4444' 
+                        : (editName.trim().toLowerCase() !== person?.name.toLowerCase() && checkPersonNameExists(editName.trim()))
+                          ? '#EF4444'
+                          : '#10B981'
+                  }
+                ]}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Enter name"
+                placeholderTextColor={theme.textMuted}
+                maxLength={25}
+              />
+            </View>
+
+            {/* Relationship Type */}
+            <View style={styles.editSection}>
+              <Text style={[styles.editLabel, { color: theme.textMuted }]}>RELATIONSHIP</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsContainer}
+              >
+                {relationshipTypes.map((type) => {
+                  const isSelected = editRelationship === type.type;
+                  return (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[
+                        styles.chip,
+                        { 
+                          backgroundColor: isSelected ? theme.primary : theme.backgroundSecondary,
+                          borderColor: isSelected ? theme.primary : theme.divider,
+                        }
+                      ]}
+                      onPress={() => setEditRelationship(type.type)}
+                    >
+                      <Text style={styles.chipEmoji}>{type.emoji}</Text>
+                      <Text style={[
+                        styles.chipText,
+                        { color: isSelected ? '#FFF' : theme.text }
+                      ]}>
+                        {type.type}
+                      </Text>
+                      {isSelected && (
+                        <Text style={styles.chipCheck}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Save Button */}
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                { opacity: isEditValid() ? 1 : 0.5 }
+              ]}
+              onPress={handleSaveEdit}
+              disabled={!isEditValid()}
+            >
+              <LinearGradient
+                colors={[theme.primary, theme.primaryLight]}
+                style={styles.saveGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Stats Bar */}
       <View style={[styles.statsBar, { backgroundColor: theme.card }]}>
@@ -564,13 +889,25 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: 'Inter_700Bold',
     color: '#FFF',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  relationshipPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
+    gap: 6,
+  },
+  relationshipEmoji: {
+    fontSize: 16,
   },
   relationshipType: {
-    fontSize: 15,
-    fontFamily: 'Inter_500Medium',
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 16,
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#FFF',
   },
   scoreCard: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -620,27 +957,190 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontFamily: 'Inter_700Bold',
   },
-  menu: {
+
+  // Floating Menu Overlay
+  menuOverlayBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 100,
+  },
+
+  // Floating Card Menu
+  floatingMenu: {
     position: 'absolute',
     top: 100,
     right: 20,
-    borderRadius: 12,
+    width: 220,
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 1000,
-    minWidth: 180,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 15,
+    zIndex: 101,
+    overflow: 'visible',
   },
-  menuItem: {
-    padding: 14,
+  menuArrow: {
+    position: 'absolute',
+    top: -8,
+    right: 14,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  floatingMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
   },
-  menuItemText: {
+  menuItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuItemIconText: {
+    fontSize: 18,
+  },
+  floatingMenuText: {
     fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    flex: 1,
+  },
+  menuItemArrow: {
+    fontSize: 20,
+    fontFamily: 'Inter_400Regular',
+  },
+
+  // Modal Overlay (for edit modal)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+  },
+
+  // Edit Sheet
+  editSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  closeButton: {
+    fontSize: 22,
+    padding: 4,
+  },
+  editAvatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+  editAvatarText: {
+    fontSize: 32,
+    fontFamily: 'Inter_700Bold',
+  },
+  editSection: {
+    marginBottom: 20,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  editLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1,
+    flex: 1,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    color: '#EF4444',
+    marginRight: 8,
+  },
+  charCount: {
+    fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },
+  editInput: {
+    padding: 14,
+    borderRadius: 12,
+    fontSize: 16,
+    fontFamily: 'Inter_500Medium',
+    borderWidth: 1.5,
+  },
+  chipsContainer: {
+    paddingVertical: 4,
+    gap: 10,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  chipEmoji: {
+    fontSize: 18,
+  },
+  chipText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  chipCheck: {
+    fontSize: 12,
+    color: '#FFF',
+    fontFamily: 'Inter_700Bold',
+  },
+  saveButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  saveGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+  },
+
+  // Stats Bar
   statsBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
