@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { initDatabase, seedCategories, initSettings } from './src/database/db';
+import { initDatabase, seedCategories, initSettings, initRelationshipTypes } from './src/database/db';
 import HomeScreen from './src/screens/HomeScreen';
 import AddPersonScreen from './src/screens/AddPersonScreen';
 import PersonDetailScreen from './src/screens/PersonDetailScreen';
@@ -21,6 +21,7 @@ import { initializePurchases } from './src/services/purchases';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import LegalScreen from './src/screens/LegalScreen';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -205,6 +206,7 @@ export default function App() {
         initDatabase();
         initSettings();
         seedCategories();
+        initRelationshipTypes();
         
         try {
           await initializePurchases();

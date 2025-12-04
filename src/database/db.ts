@@ -244,3 +244,89 @@ export const toggleFavorite = (personId: number) => {
 export const getDatabase = () => {
   return SQLite.openDatabaseSync('logifyer.db');
 };
+
+// ============ CUSTOM RELATIONSHIP TYPES ============
+
+export const initRelationshipTypes = () => {
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS relationship_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL UNIQUE,
+      emoji TEXT NOT NULL,
+      is_custom INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // Seed default relationship types
+  const defaults = [
+    { type: 'Friend', emoji: '👋' },
+    { type: 'Family', emoji: '👨‍👩‍👧' },
+    { type: 'Partner', emoji: '❤️' },
+    { type: 'Ex', emoji: '💔' },
+    { type: 'Coworker', emoji: '💼' },
+    { type: 'Acquaintance', emoji: '🤝' },
+  ];
+
+  defaults.forEach(item => {
+    const exists = db.getFirstSync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM relationship_types WHERE type = ?',
+      [item.type]
+    );
+    
+    if (!exists || exists.count === 0) {
+      db.runSync(
+        'INSERT INTO relationship_types (type, emoji, is_custom) VALUES (?, ?, 0)',
+        [item.type, item.emoji]
+      );
+    }
+  });
+
+  console.log('Relationship types initialized');
+};
+
+export const getAllRelationshipTypes = () => {
+  // Custom types first (newest first), then defaults
+  return db.getAllSync('SELECT * FROM relationship_types ORDER BY is_custom DESC, id DESC');
+};
+
+export const getCustomRelationshipTypesCount = () => {
+  const result = db.getFirstSync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM relationship_types WHERE is_custom = 1'
+  );
+  return result?.count || 0;
+};
+
+export const addCustomRelationshipType = (type: string, emoji: string) => {
+  const exists = db.getFirstSync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM relationship_types WHERE type = ?',
+    [type]
+  );
+  
+  if (exists && exists.count > 0) {
+    throw new Error('Relationship type already exists');
+  }
+
+  const customCount = getCustomRelationshipTypesCount();
+  if (customCount >= 10) {
+    throw new Error('Maximum custom relationship types reached (10)');
+  }
+
+  db.runSync(
+    'INSERT INTO relationship_types (type, emoji, is_custom) VALUES (?, ?, 1)',
+    [type, emoji]
+  );
+};
+
+export const deleteCustomRelationshipType = (type: string) => {
+  // Only delete if it's custom
+  db.runSync('DELETE FROM relationship_types WHERE type = ? AND is_custom = 1', [type]);
+};
+
+export const checkPersonNameExists = (name: string) => {
+  const result = db.getFirstSync<{ count: number }>(
+    'SELECT COUNT(*) as count FROM people WHERE LOWER(name) = LOWER(?)',
+    [name.trim()]
+  );
+  return (result?.count || 0) > 0;
+};
