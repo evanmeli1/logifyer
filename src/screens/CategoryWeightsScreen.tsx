@@ -12,6 +12,7 @@ export default function CategoryWeightsScreen() {
   const { theme } = useTheme();
   const [categories, setCategories] = useState<Category[]>([]);
   const [weights, setWeights] = useState<{ [key: number]: number }>({});
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     const categoriesData = getAllCategories() as Category[];
@@ -26,6 +27,7 @@ export default function CategoryWeightsScreen() {
 
   const updateWeight = (categoryId: number, value: number) => {
     setWeights(prev => ({ ...prev, [categoryId]: Math.round(value) }));
+    setHasChanges(true);
   };
 
   const resetToDefaults = () => {
@@ -36,6 +38,7 @@ export default function CategoryWeightsScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Reset',
+          style: 'destructive',
           onPress: () => {
             const defaultValues: any = {
               'Cancelled plans': -3,
@@ -57,6 +60,7 @@ export default function CategoryWeightsScreen() {
               updateCategoryWeight(cat.id, defaultValue);
             });
             setWeights(newWeights);
+            setHasChanges(false);
             Alert.alert('Success', 'Reset to default values!');
           },
         },
@@ -68,6 +72,7 @@ export default function CategoryWeightsScreen() {
     Object.entries(weights).forEach(([categoryId, points]) => {
       updateCategoryWeight(Number(categoryId), points);
     });
+    setHasChanges(false);
     Alert.alert('Success', 'Category weights updated!', [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);
@@ -83,16 +88,20 @@ export default function CategoryWeightsScreen() {
     return (
       <View style={[styles.categoryCard, { backgroundColor: theme.card }]}>
         <View style={styles.categoryHeader}>
-          <View style={[styles.emojiContainer, { backgroundColor: color + '15' }]}>
+          <View style={[styles.emojiContainer, { backgroundColor: color + '12' }]}>
             <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
           </View>
           <View style={styles.categoryInfo}>
-            <Text style={[styles.categoryName, { color: theme.text }]}>{cat.name}</Text>
-            <Text style={[styles.categoryDescription, { color: theme.textMuted }]}>
-              {isPositive ? 'Positive impact' : 'Negative impact'}
+            <Text style={[styles.categoryName, { color: theme.text }]} numberOfLines={1}>
+              {cat.name}
             </Text>
+            {cat.is_custom === 1 && (
+              <View style={[styles.customBadge, { backgroundColor: theme.primary + '15' }]}>
+                <Text style={[styles.customBadgeText, { color: theme.primary }]}>Custom</Text>
+              </View>
+            )}
           </View>
-          <View style={[styles.valueContainer, { backgroundColor: color + '15' }]}>
+          <View style={[styles.valueContainer, { backgroundColor: color + '12' }]}>
             <Text style={[styles.categoryValue, { color }]}>
               {isPositive ? '+' : ''}{value}
             </Text>
@@ -113,10 +122,10 @@ export default function CategoryWeightsScreen() {
           />
           <View style={styles.sliderLabels}>
             <Text style={[styles.sliderLabel, { color: theme.textMuted }]}>
-              {isPositive ? '+1' : '-20'}
+              {isPositive ? 'Low' : 'Severe'}
             </Text>
             <Text style={[styles.sliderLabel, { color: theme.textMuted }]}>
-              {isPositive ? '+20' : '-1'}
+              {isPositive ? 'High' : 'Minor'}
             </Text>
           </View>
         </View>
@@ -126,9 +135,12 @@ export default function CategoryWeightsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header - matching other screens */}
       <LinearGradient
         colors={[theme.primary, theme.primaryLight]}
         style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
         <TouchableOpacity 
           style={styles.backButton}
@@ -136,9 +148,22 @@ export default function CategoryWeightsScreen() {
         >
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Category Weights</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Category Weights</Text>
+          <Text style={styles.headerSubtitle}>Customize point values</Text>
+        </View>
         <View style={styles.headerSpacer} />
       </LinearGradient>
+
+      {/* Info Card */}
+      <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
+        <View style={[styles.infoIcon, { backgroundColor: theme.primary + '12' }]}>
+          <Text style={styles.infoIconText}>💡</Text>
+        </View>
+        <Text style={[styles.infoText, { color: theme.textMuted }]}>
+          Adjust how much each action affects  scores. Higher values = bigger impact.
+        </Text>
+      </View>
 
       <ScrollView 
         style={styles.scrollView} 
@@ -148,12 +173,10 @@ export default function CategoryWeightsScreen() {
         {/* Negative Categories */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIcon, { backgroundColor: '#EF4444' + '15' }]}>
-              <Text style={styles.sectionIconText}>👎</Text>
-            </View>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Negative</Text>
+            <View style={[styles.sectionDot, { backgroundColor: '#EF4444' }]} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Negative Actions</Text>
             <Text style={[styles.sectionCount, { color: theme.textMuted }]}>
-              {negativeCategories.length} categories
+              {negativeCategories.length}
             </Text>
           </View>
           
@@ -165,12 +188,10 @@ export default function CategoryWeightsScreen() {
         {/* Positive Categories */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIcon, { backgroundColor: '#10B981' + '15' }]}>
-              <Text style={styles.sectionIconText}>👍</Text>
-            </View>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Positive</Text>
+            <View style={[styles.sectionDot, { backgroundColor: '#10B981' }]} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Positive Actions</Text>
             <Text style={[styles.sectionCount, { color: theme.textMuted }]}>
-              {positiveCategories.length} categories
+              {positiveCategories.length}
             </Text>
           </View>
           
@@ -180,15 +201,20 @@ export default function CategoryWeightsScreen() {
         </View>
       </ScrollView>
 
+      {/* Footer */}
       <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.divider }]}>
         <TouchableOpacity 
-          style={[styles.resetButton, { borderColor: theme.divider }]} 
+          style={[styles.resetButton, { backgroundColor: theme.backgroundSecondary }]} 
           onPress={resetToDefaults}
         >
-          <Text style={[styles.resetButtonText, { color: theme.textMuted }]}>Reset</Text>
+          <Text style={[styles.resetButtonText, { color: theme.textMuted }]}>🔄 Reset</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity 
+          style={[styles.saveButton, { opacity: hasChanges ? 1 : 0.5 }]} 
+          onPress={handleSave}
+          disabled={!hasChanges}
+        >
           <LinearGradient
             colors={[theme.primary, theme.primaryLight]}
             start={{ x: 0, y: 0 }}
@@ -212,19 +238,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 20,
-    paddingBottom: 16,
+    paddingBottom: 24,
     paddingHorizontal: 20,
   },
   backButton: {
     width: 44,
     height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   backArrow: {
-    fontSize: 24,
+    fontSize: 22,
     color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  headerCenter: {
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
@@ -232,15 +263,47 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
+  headerSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
   headerSpacer: {
     width: 44,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 14,
+    gap: 12,
+  },
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoIconText: {
+    fontSize: 20,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    lineHeight: 18,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 0,
+    paddingBottom: 20,
   },
   section: {
     marginBottom: 24,
@@ -248,27 +311,27 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+    gap: 10,
   },
-  sectionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  sectionIconText: {
-    fontSize: 18,
+  sectionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: 'Inter_700Bold',
     flex: 1,
   },
   sectionCount: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   categoryCard: {
     borderRadius: 16,
@@ -283,12 +346,12 @@ const styles = StyleSheet.create({
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   emojiContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -298,27 +361,35 @@ const styles = StyleSheet.create({
   },
   categoryInfo: {
     flex: 1,
+    gap: 4,
   },
   categoryName: {
     fontSize: 15,
     fontFamily: 'Inter_600SemiBold',
-    marginBottom: 2,
   },
-  categoryDescription: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+  customBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  customBadgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter_700Bold',
   },
   valueContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 54,
+    alignItems: 'center',
   },
   categoryValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter_700Bold',
   },
   sliderContainer: {
-    marginTop: 4,
+    marginTop: 2,
   },
   slider: {
     width: '100%',
@@ -328,7 +399,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 4,
-    marginTop: -4,
+    marginTop: -6,
   },
   sliderLabel: {
     fontSize: 11,
@@ -337,15 +408,14 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     padding: 20,
-    paddingBottom: 32,
+    paddingBottom: 36,
     gap: 12,
     borderTopWidth: 1,
   },
   resetButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -355,15 +425,15 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   saveGradient: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter_700Bold',
     color: '#FFFFFF',
   },

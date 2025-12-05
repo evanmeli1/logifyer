@@ -49,6 +49,21 @@ function HomeStack() {
         component={LogIncidentScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen 
+        name="ManageCategories" 
+        component={ManageCategoriesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CategoryWeights" 
+        component={CategoryWeightsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Paywall" 
+        component={PaywallScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -59,6 +74,21 @@ function LogStack() {
       <Stack.Screen 
         name="LogMain" 
         component={LogIncidentScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="ManageCategories" 
+        component={ManageCategoriesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CategoryWeights" 
+        component={CategoryWeightsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Paywall" 
+        component={PaywallScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>

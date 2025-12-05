@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, TextInput, Modal, ScrollView } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getAllCategories, deleteCategory, addCustomCategory } from '../database/db';
+import { getAllCategories, deleteCategory, addCustomCategory, updateCategoryWeight, getDatabase } from '../database/db';
 import { Category } from '../types';
 import { useTheme } from '../theme';
 import { checkSubscription } from '../services/purchases';
@@ -12,6 +12,8 @@ export default function ManageCategoriesScreen() {
   const { theme } = useTheme();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isPremium, setIsPremium] = useState(false);
 
   const loadCategories = async () => {
@@ -65,15 +67,17 @@ export default function ManageCategoriesScreen() {
     );
   };
 
+  const handleEdit = (category: Category) => {
+    setEditingCategory(category);
+    setIsEditModalVisible(true);
+  };
+
   const renderCategoryItem = (item: Category, isCustom: boolean) => {
     const isPositive = item.is_positive === 1;
     const color = isPositive ? '#10B981' : '#EF4444';
 
-    return (
-      <View 
-        key={item.id} 
-        style={[styles.categoryCard, { backgroundColor: theme.card }]}
-      >
+    const CardContent = (
+      <>
         <View style={[styles.emojiContainer, { backgroundColor: color + '12' }]}>
           <Text style={styles.categoryEmoji}>{item.emoji}</Text>
         </View>
@@ -86,17 +90,36 @@ export default function ManageCategoriesScreen() {
           </Text>
         </View>
         {isCustom ? (
-          <TouchableOpacity
-            style={[styles.deleteButton, { backgroundColor: '#EF444410' }]}
-            onPress={() => handleDelete(item.id, item.name)}
-          >
-            <Text style={styles.deleteButtonText}>🗑️</Text>
-          </TouchableOpacity>
+          <View style={[styles.editHint, { backgroundColor: theme.backgroundSecondary }]}>
+            <Text style={[styles.editHintText, { color: theme.textMuted }]}>Tap to edit</Text>
+          </View>
         ) : (
           <View style={[styles.defaultBadge, { backgroundColor: theme.backgroundSecondary }]}>
             <Text style={[styles.defaultBadgeText, { color: theme.textMuted }]}>Default</Text>
           </View>
         )}
+      </>
+    );
+
+    if (isCustom) {
+      return (
+        <TouchableOpacity 
+          key={item.id} 
+          style={[styles.categoryCard, { backgroundColor: theme.card }]}
+          onPress={() => handleEdit(item)}
+          activeOpacity={0.7}
+        >
+          {CardContent}
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View 
+        key={item.id} 
+        style={[styles.categoryCard, { backgroundColor: theme.card }]}
+      >
+        {CardContent}
       </View>
     );
   };
@@ -251,6 +274,28 @@ export default function ManageCategoriesScreen() {
         }}
         theme={theme}
       />
+
+      <EditCategoryModal
+        visible={isEditModalVisible}
+        category={editingCategory}
+        onClose={() => {
+          setIsEditModalVisible(false);
+          setEditingCategory(null);
+        }}
+        onSave={() => {
+          loadCategories();
+          setIsEditModalVisible(false);
+          setEditingCategory(null);
+        }}
+        onDelete={() => {
+          if (editingCategory) {
+            handleDelete(editingCategory.id, editingCategory.name);
+          }
+          setIsEditModalVisible(false);
+          setEditingCategory(null);
+        }}
+        theme={theme}
+      />
     </View>
   );
 }
@@ -316,7 +361,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
   };
 
   const handlePointsChange = (text: string) => {
-    // Only allow numbers
     const numericText = text.replace(/[^0-9]/g, '');
     if (numericText === '') {
       setPoints('');
@@ -334,7 +378,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
         <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-          {/* Header */}
           <View style={[styles.modalHeader, { borderBottomColor: theme.divider }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>New Category</Text>
             <TouchableOpacity onPress={resetAndClose} style={styles.modalCloseButton}>
@@ -343,7 +386,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
           </View>
 
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            {/* Type Selection First */}
             <Text style={[styles.inputLabel, { color: theme.textMuted }]}>TYPE</Text>
             <View style={styles.typeButtons}>
               <TouchableOpacity
@@ -382,7 +424,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* Emoji Selection */}
             <View style={styles.labelRow}>
               <Text style={[styles.inputLabel, { color: theme.textMuted }]}>EMOJI</Text>
               {!emoji && <Text style={styles.requiredText}>Required</Text>}
@@ -406,7 +447,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               ))}
             </View>
 
-            {/* Name Input */}
             <View style={styles.labelRow}>
               <Text style={[styles.inputLabel, { color: theme.textMuted }]}>NAME</Text>
               <Text style={[
@@ -439,7 +479,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               <Text style={styles.errorText}>Name must be at least 2 characters</Text>
             )}
 
-            {/* Points Input */}
             <View style={styles.labelRow}>
               <Text style={[styles.inputLabel, { color: theme.textMuted }]}>POINTS</Text>
               <Text style={[styles.charCount, { color: theme.textMuted }]}>
@@ -493,7 +532,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               </View>
             </View>
 
-            {/* Preview Card */}
             {name.trim() && emoji && (
               <View style={[styles.previewCard, { backgroundColor: theme.backgroundSecondary }]}>
                 <Text style={[styles.previewLabel, { color: theme.textMuted }]}>PREVIEW</Text>
@@ -517,7 +555,6 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               </View>
             )}
 
-            {/* Save Button */}
             <TouchableOpacity 
               style={[styles.saveButton, { opacity: isValid ? 1 : 0.5 }]} 
               onPress={handleSave}
@@ -532,6 +569,269 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
                 <Text style={styles.saveButtonText}>Create Category</Text>
               </LinearGradient>
             </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme }: any) {
+  const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState('');
+  const [customEmoji, setCustomEmoji] = useState('');
+  const [points, setPoints] = useState('5');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const MAX_NAME_LENGTH = 30;
+  const MAX_POINTS = 20;
+  const MIN_POINTS = 1;
+
+  const isPositive = category?.is_positive === 1;
+  const negativeEmojis = ['😡', '😤', '🤬', '😒', '🙄', '😠', '💔', '😢', '🚫', '⏰', '💸', '🤥', '👻', '🔥', '💢', '😰'];
+  const positiveEmojis = ['😊', '😄', '🥰', '❤️', '💪', '🎉', '✨', '🌟', '👍', '🙌', '✅', '👂', '🤗', '💯', '🏆', '💝'];
+  const displayedEmojis = isPositive ? positiveEmojis : negativeEmojis;
+  const color = isPositive ? '#10B981' : '#EF4444';
+
+  React.useEffect(() => {
+    if (category) {
+      setName(category.name);
+      setEmoji(category.emoji);
+      setCustomEmoji('');
+      setPoints(String(Math.abs(category.default_points)));
+      setShowEmojiPicker(false);
+    }
+  }, [category]);
+
+  const handleSave = () => {
+    const trimmedName = name.trim();
+    const finalEmoji = customEmoji || emoji;
+    
+    if (!trimmedName) {
+      Alert.alert('Error', 'Please enter a category name');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      Alert.alert('Error', 'Name must be at least 2 characters');
+      return;
+    }
+    if (!finalEmoji) {
+      Alert.alert('Error', 'Please select an emoji');
+      return;
+    }
+    
+    const pointsNum = Number(points);
+    if (!points || isNaN(pointsNum)) {
+      Alert.alert('Error', 'Please enter valid points');
+      return;
+    }
+    if (pointsNum < MIN_POINTS || pointsNum > MAX_POINTS) {
+      Alert.alert('Error', `Points must be between ${MIN_POINTS} and ${MAX_POINTS}`);
+      return;
+    }
+
+    const db = getDatabase();
+    const pointsValue = isPositive ? Math.abs(pointsNum) : -Math.abs(pointsNum);
+    db.runSync(
+      'UPDATE categories SET name = ?, emoji = ?, default_points = ? WHERE id = ?',
+      [trimmedName, finalEmoji, pointsValue, category.id]
+    );
+    
+    onSave();
+  };
+
+  const handlePointsChange = (text: string) => {
+    const numericText = text.replace(/[^0-9]/g, '');
+    if (numericText === '') {
+      setPoints('');
+    } else {
+      const num = parseInt(numericText, 10);
+      if (num <= MAX_POINTS) {
+        setPoints(numericText);
+      }
+    }
+  };
+
+  const handleCustomEmojiChange = (text: string) => {
+    const emojiRegex = /\p{Emoji}/u;
+    const match = text.match(emojiRegex);
+    if (match) {
+      setCustomEmoji(match[0]);
+      setEmoji('');
+    } else if (text === '') {
+      setCustomEmoji('');
+    }
+  };
+
+  const selectEmoji = (e: string) => {
+    setEmoji(e);
+    setCustomEmoji('');
+    setShowEmojiPicker(false);
+  };
+
+  const finalEmoji = customEmoji || emoji;
+  const isValid = name.trim().length >= 2 && finalEmoji && points && Number(points) >= MIN_POINTS;
+
+  if (!category) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.editModalContent, { backgroundColor: theme.card }]}>
+          {/* Header */}
+          <View style={[styles.editModalHeader, { borderBottomColor: theme.divider }]}>
+            <Text style={[styles.editModalTitle, { color: theme.text }]}>Edit Category</Text>
+            <View style={styles.editHeaderRight}>
+              <View style={[styles.editTypeBadge, { backgroundColor: color + '15' }]}>
+                <Text style={[styles.editTypeText, { color }]}>
+                  {isPositive ? '👍 Positive' : '👎 Negative'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.editCloseBtn}>
+                <Text style={[styles.editCloseBtnText, { color: theme.textMuted }]}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ScrollView style={styles.editModalBody} showsVerticalScrollIndicator={false}>
+            {/* Name Input - First */}
+            <View style={styles.editSection}>
+              <View style={styles.editSectionHeader}>
+                <Text style={[styles.editSectionTitle, { color: theme.text }]}>Name</Text>
+                <Text style={[
+                  styles.editCharCount, 
+                  { color: name.length >= MAX_NAME_LENGTH - 5 ? '#EF4444' : theme.textMuted }
+                ]}>
+                  {name.length}/{MAX_NAME_LENGTH}
+                </Text>
+              </View>
+              <TextInput
+                style={[
+                  styles.editNameInput,
+                  { 
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: name.trim().length < 2 ? theme.divider : color,
+                    color: theme.text,
+                  }
+                ]}
+                placeholder="Category name"
+                placeholderTextColor={theme.textMuted}
+                value={name}
+                onChangeText={(text) => setName(text.slice(0, MAX_NAME_LENGTH))}
+                maxLength={MAX_NAME_LENGTH}
+              />
+            </View>
+
+            {/* Emoji Section */}
+            <View style={styles.editSection}>
+              <Text style={[styles.editSectionTitle, { color: theme.text }]}>Emoji</Text>
+              <View style={styles.emojiDisplayRow}>
+                <TouchableOpacity 
+                  style={[
+                    styles.currentEmojiBox, 
+                    { 
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: finalEmoji ? color : theme.divider,
+                    }
+                  ]}
+                  onPress={() => setShowEmojiPicker(!showEmojiPicker)}
+                >
+                  <Text style={styles.currentEmojiText}>{finalEmoji || '?'}</Text>
+                </TouchableOpacity>
+                
+                <TextInput
+                  style={[
+                    styles.customEmojiInput,
+                    { 
+                      backgroundColor: theme.backgroundSecondary,
+                      borderColor: theme.divider,
+                      color: theme.text,
+                    }
+                  ]}
+                  placeholder="Or paste custom"
+                  placeholderTextColor={theme.textMuted}
+                  value={customEmoji}
+                  onChangeText={handleCustomEmojiChange}
+                  maxLength={2}
+                />
+              </View>
+
+              {showEmojiPicker && (
+                <View style={[styles.emojiPickerBox, { backgroundColor: theme.backgroundSecondary }]}>
+                  <View style={styles.emojiPickerGrid}>
+                    {displayedEmojis.map((e) => (
+                      <TouchableOpacity
+                        key={e}
+                        style={[
+                          styles.emojiPickerItem,
+                          emoji === e && !customEmoji && { backgroundColor: color + '20' }
+                        ]}
+                        onPress={() => selectEmoji(e)}
+                      >
+                        <Text style={styles.emojiPickerItemText}>{e}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Points Section */}
+            <View style={styles.editSection}>
+              <Text style={[styles.editSectionTitle, { color: theme.text }]}>Points</Text>
+              <View style={styles.editPointsRow}>
+                <TouchableOpacity
+                  style={[styles.editPointsBtn, { backgroundColor: theme.backgroundSecondary }]}
+                  onPress={() => {
+                    const current = Number(points) || MIN_POINTS;
+                    if (current > MIN_POINTS) setPoints(String(current - 1));
+                  }}
+                >
+                  <Text style={[styles.editPointsBtnText, { color: theme.text }]}>−</Text>
+                </TouchableOpacity>
+                
+                <View style={[styles.editPointsDisplay, { backgroundColor: color + '12' }]}>
+                  <Text style={[styles.editPointsValue, { color }]}>
+                    {isPositive ? '+' : '-'}{points || '0'}
+                  </Text>
+                </View>
+                
+                <TouchableOpacity
+                  style={[styles.editPointsBtn, { backgroundColor: theme.backgroundSecondary }]}
+                  onPress={() => {
+                    const current = Number(points) || 0;
+                    if (current < MAX_POINTS) setPoints(String(current + 1));
+                  }}
+                >
+                  <Text style={[styles.editPointsBtnText, { color: theme.text }]}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.editActionsRow}>
+              <TouchableOpacity 
+                style={[styles.editDeleteBtn, { backgroundColor: '#EF444412' }]}
+                onPress={onDelete}
+              >
+                <Text style={styles.editDeleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.editSaveBtn, { opacity: isValid ? 1 : 0.5 }]} 
+                onPress={handleSave}
+                disabled={!isValid}
+              >
+                <LinearGradient
+                  colors={[theme.primary, theme.primaryLight]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.editSaveGradient}
+                >
+                  <Text style={styles.editSaveBtnText}>Save</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -578,7 +878,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 80,
   },
   usageCard: {
     borderRadius: 20,
@@ -722,6 +1022,15 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 18,
+  },
+  editHint: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  editHintText: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
   },
   defaultBadge: {
     paddingHorizontal: 10,
@@ -973,6 +1282,181 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+  },
+  // Edit Modal Styles
+  editModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+  },
+  editHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  editTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  editTypeText: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  editCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editCloseBtnText: {
+    fontSize: 18,
+  },
+  editModalBody: {
+    padding: 20,
+    paddingBottom: 30,
+  },
+  editSection: {
+    marginBottom: 20,
+  },
+  editSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  editSectionTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 10,
+  },
+  editCharCount: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+  },
+  emojiDisplayRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  currentEmojiBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  currentEmojiText: {
+    fontSize: 26,
+  },
+  customEmojiInput: {
+    flex: 1,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 2,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+  },
+  emojiPickerBox: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 14,
+  },
+  emojiPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  emojiPickerItem: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiPickerItemText: {
+    fontSize: 22,
+  },
+  editNameInput: {
+    borderWidth: 2,
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+  },
+  editPointsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  editPointsBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editPointsBtnText: {
+    fontSize: 24,
+    fontFamily: 'Inter_500Medium',
+  },
+  editPointsDisplay: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editPointsValue: {
+    fontSize: 20,
+    fontFamily: 'Inter_700Bold',
+  },
+  editActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  editDeleteBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editDeleteBtnText: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#EF4444',
+  },
+  editSaveBtn: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  editSaveGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  editSaveBtnText: {
+    color: '#FFF',
+    fontSize: 15,
     fontFamily: 'Inter_700Bold',
   },
 });

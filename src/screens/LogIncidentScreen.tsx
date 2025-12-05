@@ -11,6 +11,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +19,12 @@ import { getAllPeople, getAllCategories, logIncident, getSettings } from '../dat
 import { Person, Category } from '../types';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme';
+import Reanimated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming,
+} from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -38,6 +45,35 @@ export default function LogIncidentScreen({ route }: any) {
   // UI state
   const [activeTab, setActiveTab] = useState<'negative' | 'positive'>('negative');
   const [showNote, setShowNote] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  // Menu animation
+  const menuScale = useSharedValue(0);
+  const menuOpacity = useSharedValue(0);
+
+  const openMenu = () => {
+    setMenuVisible(true);
+    menuScale.value = withSpring(1, { damping: 20, stiffness: 200 });
+    menuOpacity.value = withTiming(1, { duration: 150 });
+  };
+
+  const closeMenu = () => {
+    menuScale.value = withSpring(0, { damping: 20, stiffness: 300 });
+    menuOpacity.value = withTiming(0, { duration: 100 });
+    setTimeout(() => setMenuVisible(false), 150);
+  };
+
+  const menuAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: menuScale.value },
+      { translateY: (1 - menuScale.value) * -10 },
+    ],
+    opacity: menuOpacity.value,
+  }));
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: menuOpacity.value * 0.3,
+  }));
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -286,8 +322,59 @@ export default function LogIncidentScreen({ route }: any) {
           <Text style={styles.backIcon}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Log</Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity onPress={openMenu} style={styles.menuBtn}>
+          <Text style={styles.menuIcon}>⋯</Text>
+        </TouchableOpacity>
       </LinearGradient>
+
+      {/* Floating Menu */}
+      {menuVisible && (
+        <>
+          <Reanimated.View style={[styles.menuOverlay, overlayAnimatedStyle]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
+          </Reanimated.View>
+          
+          <Reanimated.View 
+            style={[
+              styles.floatingMenu, 
+              { backgroundColor: theme.card },
+              menuAnimatedStyle,
+            ]}
+          >
+            <View style={[styles.menuArrow, { borderBottomColor: theme.card }]} />
+            
+            <TouchableOpacity 
+              style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]}
+              onPress={() => {
+                closeMenu();
+                setTimeout(() => (navigation as any).navigate('ManageCategories'), 200);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: theme.primary + '15' }]}>
+                <Text style={styles.menuItemIconText}>📝</Text>
+              </View>
+              <Text style={[styles.floatingMenuText, { color: theme.text }]}>Manage Categories</Text>
+              <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.floatingMenuItem, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                closeMenu();
+                setTimeout(() => (navigation as any).navigate('CategoryWeights'), 200);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: '#F59E0B15' }]}>
+                <Text style={styles.menuItemIconText}>⚖️</Text>
+              </View>
+              <Text style={[styles.floatingMenuText, { color: theme.text }]}>Category Weights</Text>
+              <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+          </Reanimated.View>
+        </>
+      )}
 
       <Animated.View
         style={[
@@ -327,14 +414,12 @@ export default function LogIncidentScreen({ route }: any) {
                         {
                           backgroundColor: isSelected ? theme.primary : theme.card,
                           borderColor: isSelected ? theme.primary : theme.divider,
-                          shadowColor: isSelected ? theme.primary : '#000',
-                          shadowOpacity: isSelected ? 0.3 : 0.08,
                         },
                       ]}
                     >
                       <View style={[
                         styles.personAvatar,
-                        { backgroundColor: isSelected ? 'rgba(255,255,255,0.3)' : theme.primary + '20' }
+                        { backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : theme.primary + '15' }
                       ]}>
                         <Text style={[
                           styles.personInitial,
@@ -352,6 +437,11 @@ export default function LogIncidentScreen({ route }: any) {
                       >
                         {person.name}
                       </Text>
+                      {isSelected && (
+                        <View style={styles.personCheck}>
+                          <Text style={styles.personCheckText}>✓</Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
                   </Animated.View>
                 );
@@ -427,8 +517,6 @@ export default function LogIncidentScreen({ route }: any) {
                           styles.actionButton,
                           {
                             borderColor: isSelected ? accentColor : theme.divider,
-                            shadowColor: isSelected ? accentColor : '#000',
-                            shadowOpacity: isSelected ? 0.3 : 0.08,
                           },
                         ]}
                       >
@@ -666,6 +754,78 @@ const styles = StyleSheet.create({
     color: '#FFF',
     letterSpacing: -0.3,
   },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuIcon: {
+    fontSize: 20,
+    color: '#FFF',
+    fontFamily: 'Inter_700Bold',
+  },
+  // Floating Menu
+  menuOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    zIndex: 100,
+  },
+  floatingMenu: {
+    position: 'absolute',
+    top: 100,
+    right: 20,
+    width: 220,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 15,
+    zIndex: 101,
+    overflow: 'visible',
+  },
+  menuArrow: {
+    position: 'absolute',
+    top: -8,
+    right: 14,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  floatingMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  menuItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuItemIconText: {
+    fontSize: 18,
+  },
+  floatingMenuText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+    flex: 1,
+  },
+  menuItemArrow: {
+    fontSize: 18,
+    fontFamily: 'Inter_400Regular',
+  },
   headerSpacer: {
     width: 40,
   },
@@ -693,14 +853,12 @@ const styles = StyleSheet.create({
   personChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingLeft: 8,
+    paddingRight: 14,
     borderRadius: 50,
     borderWidth: 1.5,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 3,
-    gap: 10,
+    gap: 8,
   },
   personAvatar: {
     width: 32,
@@ -716,7 +874,21 @@ const styles = StyleSheet.create({
   personName: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
-    maxWidth: 100,
+    maxWidth: 80,
+  },
+  personCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 2,
+  },
+  personCheckText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -753,9 +925,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1.5,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 12,
-    elevation: 4,
   },
   actionEmoji: {
     fontSize: 28,
@@ -801,11 +970,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     padding: 16,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
   },
   optionsRow: {
     flexDirection: 'row',
