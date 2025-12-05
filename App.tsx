@@ -52,17 +52,17 @@ function HomeStack() {
       <Stack.Screen 
         name="ManageCategories" 
         component={ManageCategoriesScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen 
         name="CategoryWeights" 
         component={CategoryWeightsScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen 
         name="Paywall" 
         component={PaywallScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
     </Stack.Navigator>
   );
@@ -79,17 +79,17 @@ function LogStack() {
       <Stack.Screen 
         name="ManageCategories" 
         component={ManageCategoriesScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen 
         name="CategoryWeights" 
         component={CategoryWeightsScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
       <Stack.Screen 
         name="Paywall" 
         component={PaywallScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, presentation: 'modal' }}
       />
     </Stack.Navigator>
   );

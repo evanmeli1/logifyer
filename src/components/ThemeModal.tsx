@@ -9,8 +9,7 @@ import {
   Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../theme/ThemeContext';
-import { themeColors, ThemeColor } from '../theme/themes';
+import { useTheme, themeColors, ThemeColor } from '../theme';
 import Animated, { FadeIn, FadeOut, SlideInDown } from 'react-native-reanimated';
 
 interface ThemeModalProps {
@@ -20,6 +19,9 @@ interface ThemeModalProps {
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// Free themes
+const freeThemes: ThemeColor[] = ['rose', 'ocean'];
 
 export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalProps) {
   const { theme, themeColor, themeMode, isPremium, setThemeColor, toggleDarkMode } = useTheme();
@@ -49,7 +51,7 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
         onPress={onClose}
       >
         <Animated.View 
-          entering={SlideInDown.springify().damping(20)}
+          entering={SlideInDown.springify().damping(18).stiffness(120)}
           style={[styles.container, { backgroundColor: theme.card }]}
         >
           <Pressable onPress={(e) => e.stopPropagation()}>
@@ -87,6 +89,7 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
               {colorOptions.map(([key, data]) => {
                 const isSelected = themeColor === key;
                 const isLocked = data.premium && !isPremium;
+                const isFree = freeThemes.includes(key);
                 
                 return (
                   <TouchableOpacity
@@ -116,9 +119,14 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
                     ]}>
                       {data.name}
                     </Text>
-                    {data.premium && (
+                    {data.premium && !isFree && (
                       <View style={[styles.premiumBadge, { backgroundColor: theme.primary + '20' }]}>
                         <Text style={[styles.premiumText, { color: theme.primary }]}>PRO</Text>
+                      </View>
+                    )}
+                    {isFree && (
+                      <View style={styles.freeBadge}>
+                        <Text style={styles.freeBadgeText}>Free</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -262,6 +270,19 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  freeBadge: {
+    backgroundColor: '#10B98120',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  freeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    color: '#10B981',
   },
   upgradeButton: {
     paddingVertical: 16,
