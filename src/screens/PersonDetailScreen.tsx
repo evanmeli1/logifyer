@@ -38,6 +38,8 @@ import {
 import { Person } from '../types';
 import { generatePersonInsights, AIInsightsResult } from '../services/ai';
 import { useTheme } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { checkSubscription } from '../services/purchases';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -50,6 +52,7 @@ interface RelationshipType {
 
 export default function PersonDetailScreen({ route }: any) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIncidents, setSelectedIncidents] = useState<number[]>([]);  
   const { personId } = route.params || {};
@@ -60,6 +63,7 @@ export default function PersonDetailScreen({ route }: any) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [aiInsights, setAiInsights] = useState<AIInsightsResult | null>(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
 
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -115,6 +119,18 @@ export default function PersonDetailScreen({ route }: any) {
       } catch (e) {
         console.log('Could not load relationship types');
       }
+      
+      // Check premium status
+      const checkPremiumStatus = async () => {
+        try {
+          const premium = await checkSubscription();
+          setIsPremium(premium);
+        } catch (error) {
+          console.log('Error checking subscription:', error);
+          setIsPremium(false);
+        }
+      };
+      checkPremiumStatus();
     }, [loadData])
   );
 
@@ -223,6 +239,38 @@ export default function PersonDetailScreen({ route }: any) {
   };
 
   const handleGenerateInsights = async (forceRegenerate: boolean = false) => {
+    // Check if user is signed in
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to sign in to use AI Insights.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Sign In', 
+            onPress: () => (navigation as any).navigate('Settings', { screen: 'SignIn' })
+          },
+        ]
+      );
+      return;
+    }
+
+    // Check if user is premium
+    if (!isPremium) {
+      Alert.alert(
+        'Premium Feature',
+        'AI Insights is a premium feature. Upgrade to unlock personalized relationship analysis.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => (navigation as any).getParent()?.navigate('Settings', { screen: 'Paywall' })
+          },
+        ]
+      );
+      return;
+    }
+
     if (incidents.length === 0) {
       Alert.alert('No Data', 'Add some incidents first to generate insights.');
       return;

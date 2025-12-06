@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', zIndex: 1 },
   tabText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   categoryScroll: { flex: 1 },
-  categoryScrollContent: { paddingHorizontal: 20, paddingTop: 4 },
+  categoryScrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 65 },
   actionList: { gap: 10 },
   actionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1.5 },
   actionEmoji: { fontSize: 28, marginRight: 14 },
