@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Animated, { 
   FadeInDown,
@@ -13,18 +13,26 @@ import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 're
 import { getAllPeople, getPersonScore, toggleFavorite } from '../database/db';
 import { Person } from '../types';
 import { useTheme } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { checkSubscription } from '../services/purchases';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 type SortOption = 'score-high' | 'score-low' | 'name' | 'recent';
 
+// Limits
+const FREE_PEOPLE_LIMIT = 5;
+const PREMIUM_PEOPLE_LIMIT = 50;
+
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [people, setPeople] = useState<(Person & { score: number })[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('score-high');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const isInitialMount = React.useRef(true);
 
   const loadPeople = useCallback(() => {
@@ -39,6 +47,19 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPeople();
+      
+      // Check premium status
+      const checkPremiumStatus = async () => {
+        try {
+          const premium = await checkSubscription();
+          setIsPremium(premium);
+        } catch (error) {
+          console.log('Error checking subscription:', error);
+          setIsPremium(false);
+        }
+      };
+      checkPremiumStatus();
+      
       if (isInitialMount.current) {
         setTimeout(() => {
           isInitialMount.current = false;
@@ -50,6 +71,37 @@ export default function HomeScreen() {
   const handleToggleFavorite = (personId: number) => {
     toggleFavorite(personId);
     loadPeople();
+  };
+
+  const handleAddPerson = () => {
+    const currentLimit = isPremium ? PREMIUM_PEOPLE_LIMIT : FREE_PEOPLE_LIMIT;
+    
+    if (people.length >= currentLimit) {
+      if (isPremium) {
+        // Premium user hit the cap
+        Alert.alert(
+          'Limit Reached',
+          `You've reached the maximum of ${PREMIUM_PEOPLE_LIMIT} people. Consider removing inactive relationships to add new ones.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        // Free user - prompt to upgrade
+        Alert.alert(
+          'Free Limit Reached',
+          `You can track up to ${FREE_PEOPLE_LIMIT} people on the free plan. Upgrade to Premium to track up to ${PREMIUM_PEOPLE_LIMIT} people.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Upgrade', 
+              onPress: () => (navigation as any).getParent()?.navigate('Settings', { screen: 'Paywall' })
+            },
+          ]
+        );
+      }
+      return;
+    }
+    
+    (navigation as any).navigate('AddPerson');
   };
 
   const getFilteredAndSortedPeople = () => {
@@ -213,6 +265,9 @@ export default function HomeScreen() {
     }
   };
 
+  const currentLimit = isPremium ? PREMIUM_PEOPLE_LIMIT : FREE_PEOPLE_LIMIT;
+  const isAtLimit = people.length >= currentLimit;
+
   return (
     <LinearGradient
       colors={[theme.background, theme.backgroundSecondary]}
@@ -226,7 +281,12 @@ export default function HomeScreen() {
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.headerTitle}>Logifyer</Text>
-              <Text style={styles.headerSubtitle}>{people.length} {people.length === 1 ? 'person' : 'people'} tracked</Text>
+              <Text style={styles.headerSubtitle}>
+                {people.length}/{currentLimit} {people.length === 1 ? 'person' : 'people'} tracked
+                {!isPremium && people.length >= FREE_PEOPLE_LIMIT - 1 && (
+                  <Text style={styles.limitWarning}> • Near limit</Text>
+                )}
+              </Text>
             </View>
             <TouchableOpacity 
               style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
@@ -255,7 +315,7 @@ export default function HomeScreen() {
           
           <TouchableOpacity 
             style={styles.emptyButton}
-            onPress={() => (navigation as any).navigate('AddPerson')}
+            onPress={handleAddPerson}
           >
             <LinearGradient
               colors={[theme.primary, theme.primaryLight]}
@@ -337,12 +397,12 @@ export default function HomeScreen() {
           />
           
           <TouchableOpacity 
-            style={styles.fab}
-            onPress={() => (navigation as any).navigate('AddPerson')}
+            style={[styles.fab, isAtLimit && styles.fabDisabled]}
+            onPress={handleAddPerson}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={[theme.primary, theme.primaryLight]}
+              colors={isAtLimit ? ['#9CA3AF', '#6B7280'] : [theme.primary, theme.primaryLight]}
               style={styles.fabGradient}
             >
               <Text style={styles.fabText}>+</Text>
@@ -380,6 +440,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.85)',
     fontFamily: 'Inter_500Medium',
+  },
+  limitWarning: {
+    color: '#FCD34D',
+    fontFamily: 'Inter_600SemiBold',
   },
   settingsButton: {
     width: 40,
@@ -613,6 +677,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+  },
+  fabDisabled: {
+    shadowColor: '#6B7280',
+    shadowOpacity: 0.2,
   },
   fabGradient: {
     width: 60,

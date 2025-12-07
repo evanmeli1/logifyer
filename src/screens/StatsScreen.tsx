@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getAllPeople, getPersonScore } from '../database/db';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { getAllPeople, getPersonScore, getIncidentsByPerson } from '../database/db';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import * as SQLite from 'expo-sqlite';
 import { useTheme } from '../theme';
 import { themeColors } from '../theme/themes';
 import ThemeModal from '../components/ThemeModal';
+import { useAuth } from '../contexts/AuthContext';
+import { checkSubscription } from '../services/purchases';
+import { generateOverviewInsights, AIOverviewResult } from '../services/ai';
 
 export default function StatsScreen() {
   const navigation = useNavigation();
   const { theme, themeColor } = useTheme();
+  const { user } = useAuth();
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [loadingPremium, setLoadingPremium] = useState(true);
+  const [aiOverview, setAiOverview] = useState<AIOverviewResult | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
   const [stats, setStats] = useState({
     totalPeople: 0,
     totalIncidents: 0,
@@ -25,8 +33,22 @@ export default function StatsScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadStats();
+      checkPremiumStatus();
     }, [])
   );
+
+  const checkPremiumStatus = async () => {
+    setLoadingPremium(true);
+    try {
+      const premium = await checkSubscription();
+      setIsPremium(premium);
+    } catch (error) {
+      console.log('Error checking premium:', error);
+      setIsPremium(false);
+    } finally {
+      setLoadingPremium(false);
+    }
+  };
 
   const loadStats = () => {
     const people = getAllPeople() as any[];
@@ -98,6 +120,75 @@ export default function StatsScreen() {
       return { text: '↘ Declining', color: '#DC2626', bg: '#FEF2F2' };
     }
     return { text: '→ Stable', color: '#6B7280', bg: '#F3F4F6' };
+  };
+
+  const handleGenerateOverview = async (forceRegenerate: boolean = false) => {
+    if (!user) {
+      Alert.alert(
+        'Sign In Required',
+        'You need to sign in to use AI Overview.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Sign In', 
+            onPress: () => (navigation as any).getParent()?.navigate('Settings', { screen: 'SignIn' })
+          },
+        ]
+      );
+      return;
+    }
+
+    if (!isPremium) {
+      Alert.alert(
+        'Premium Feature',
+        'AI Overview is a premium feature. Upgrade to unlock AI-powered insights across all your relationships.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Upgrade', 
+            onPress: () => (navigation as any).navigate('Settings', { screen: 'Paywall' })
+          },
+        ]
+      );
+      return;
+    }
+
+    if (stats.totalPeople === 0) {
+      Alert.alert('No Data', 'Add some people and log incidents first to generate an overview.');
+      return;
+    }
+
+    if (stats.totalIncidents === 0) {
+      Alert.alert('No Incidents', 'Log some incidents first to generate meaningful insights.');
+      return;
+    }
+
+    setLoadingAI(true);
+    try {
+      const people = getAllPeople() as any[];
+      
+      // Build data for AI
+      const peopleData = people.map((person: any) => {
+        const incidents = getIncidentsByPerson(person.id);
+        const score = getPersonScore(person.id);
+        
+        return {
+          name: person.name,
+          relationship_type: person.relationship_type,
+          score,
+          incidentCount: incidents.length,
+          recentIncidents: incidents.slice(0, 10), // Last 10 incidents
+        };
+      });
+
+      const overview = await generateOverviewInsights(peopleData, stats.totalIncidents, forceRegenerate);
+      setAiOverview(overview);
+    } catch (error) {
+      console.error('AI Overview error:', error);
+      Alert.alert('Error', 'Failed to generate overview. Please check your internet connection and try again.');
+    } finally {
+      setLoadingAI(false);
+    }
   };
 
   const trend = getTrendInfo();
@@ -216,30 +307,127 @@ export default function StatsScreen() {
           </View>
         </Animated.View>
 
-        {/* AI Overview - LOCKED */}
+        {/* AI Overview */}
         <Animated.View entering={FadeInDown.delay(500).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
-          <TouchableOpacity 
-            onPress={() => (navigation as any).navigate('Settings', { screen: 'Paywall' })}
-            activeOpacity={0.7}
-          >
-            <View style={styles.lockedOverlay}>
-              <View style={[styles.lockBadge, { backgroundColor: theme.primary + '15' }]}>
-                <Text style={styles.lockIcon}>🔒</Text>
-              </View>
-              <Text style={[styles.lockedTitle, { color: theme.text }]}>AI Overview</Text>
-              <Text style={[styles.lockedSubtitle, { color: theme.textMuted }]}>Patterns across all your relationships</Text>
-              <View style={styles.upgradeButton}>
-                <LinearGradient
-                  colors={[theme.primary, theme.primaryLight]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.upgradeGradient}
-                >
-                  <Text style={styles.upgradeText}>Upgrade to Premium</Text>
-                </LinearGradient>
-              </View>
+          {loadingPremium ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.primary} />
             </View>
-          </TouchableOpacity>
+          ) : isPremium ? (
+            // Premium user - show AI Overview
+            <View>
+              <View style={styles.aiHeader}>
+                <View style={styles.aiTitleRow}>
+                  <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 0 }]}>🤖 AI Overview</Text>
+                  <View style={[styles.proBadgeSmall, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.proBadgeSmallText}>PRO</Text>
+                  </View>
+                </View>
+                {aiOverview && (
+                  <Text style={[styles.cacheIndicator, { color: theme.textMuted }]}>
+                    {aiOverview.isCached ? '📦 Cached' : '✨ Fresh'} • {aiOverview.generatedAt}
+                  </Text>
+                )}
+              </View>
+
+              {!aiOverview ? (
+                <TouchableOpacity 
+                  style={[styles.generateButton, { backgroundColor: theme.primary }]}
+                  onPress={() => handleGenerateOverview(false)}
+                  disabled={loadingAI}
+                  activeOpacity={0.8}
+                >
+                  {loadingAI ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.generateButtonText}>Generate Overview</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.aiContent}>
+                  {/* Summary */}
+                  <View style={[styles.aiSection, { backgroundColor: theme.backgroundSecondary }]}>
+                    <Text style={[styles.aiSectionTitle, { color: theme.text }]}>Summary</Text>
+                    <Text style={[styles.aiSectionText, { color: theme.textMuted }]}>{aiOverview.summary}</Text>
+                  </View>
+
+                  {/* Key Patterns */}
+                  {aiOverview.keyPatterns && aiOverview.keyPatterns.length > 0 && (
+                    <View style={[styles.aiSection, { backgroundColor: theme.backgroundSecondary }]}>
+                      <Text style={[styles.aiSectionTitle, { color: theme.text }]}>Key Patterns</Text>
+                      {aiOverview.keyPatterns.map((pattern, index) => (
+                        <View key={index} style={styles.patternRow}>
+                          <Text style={[styles.patternBullet, { color: theme.primary }]}>•</Text>
+                          <Text style={[styles.patternText, { color: theme.textMuted }]}>{pattern}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Top Concern & Strength */}
+                  <View style={styles.aiRow}>
+                    {aiOverview.topConcern && (
+                      <View style={[styles.aiMiniCard, { backgroundColor: '#FEF2F2', flex: 1 }]}>
+                        <Text style={styles.aiMiniIcon}>⚠️</Text>
+                        <Text style={[styles.aiMiniLabel, { color: '#DC2626' }]}>Top Concern</Text>
+                        <Text style={[styles.aiMiniText, { color: '#7F1D1D' }]} numberOfLines={3}>{aiOverview.topConcern}</Text>
+                      </View>
+                    )}
+                    {aiOverview.topStrength && (
+                      <View style={[styles.aiMiniCard, { backgroundColor: '#ECFDF5', flex: 1 }]}>
+                        <Text style={styles.aiMiniIcon}>💪</Text>
+                        <Text style={[styles.aiMiniLabel, { color: '#059669' }]}>Top Strength</Text>
+                        <Text style={[styles.aiMiniText, { color: '#065F46' }]} numberOfLines={3}>{aiOverview.topStrength}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Recommendation */}
+                  {aiOverview.recommendation && (
+                    <View style={[styles.aiSection, { backgroundColor: theme.primary + '10', borderLeftWidth: 3, borderLeftColor: theme.primary }]}>
+                      <Text style={[styles.aiSectionTitle, { color: theme.primary }]}>💡 Recommendation</Text>
+                      <Text style={[styles.aiSectionText, { color: theme.text }]}>{aiOverview.recommendation}</Text>
+                    </View>
+                  )}
+
+                  {/* Regenerate Button */}
+                  <TouchableOpacity 
+                    style={styles.regenerateButton}
+                    onPress={() => handleGenerateOverview(true)}
+                    disabled={loadingAI}
+                  >
+                    <Text style={[styles.regenerateButtonText, { color: theme.primary }]}>
+                      {loadingAI ? 'Analyzing...' : '🔄 Regenerate'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          ) : (
+            // Free user - show locked state
+            <TouchableOpacity 
+              onPress={() => (navigation as any).navigate('Settings', { screen: 'Paywall' })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.lockedOverlay}>
+                <View style={[styles.lockBadge, { backgroundColor: theme.primary + '15' }]}>
+                  <Text style={styles.lockIcon}>🔒</Text>
+                </View>
+                <Text style={[styles.lockedTitle, { color: theme.text }]}>AI Overview</Text>
+                <Text style={[styles.lockedSubtitle, { color: theme.textMuted }]}>Patterns across all your relationships</Text>
+                <View style={styles.upgradeButton}>
+                  <LinearGradient
+                    colors={[theme.primary, theme.primaryLight]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.upgradeGradient}
+                  >
+                    <Text style={styles.upgradeText}>Upgrade to Premium</Text>
+                  </LinearGradient>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
         </Animated.View>
 
         {/* Theme Card */}
@@ -470,6 +658,111 @@ const styles = StyleSheet.create({
     width: 24,
     textAlign: 'right',
   },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  // AI Overview styles
+  aiHeader: {
+    marginBottom: 16,
+  },
+  aiTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  proBadgeSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  proBadgeSmallText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontFamily: 'Inter_700Bold',
+  },
+  cacheIndicator: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 4,
+  },
+  generateButton: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  generateButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  aiContent: {
+    gap: 12,
+  },
+  aiSection: {
+    padding: 14,
+    borderRadius: 12,
+  },
+  aiSectionTitle: {
+    fontSize: 13,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 6,
+  },
+  aiSectionText: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 20,
+  },
+  patternRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 4,
+  },
+  patternBullet: {
+    fontSize: 16,
+    marginRight: 8,
+    lineHeight: 20,
+  },
+  patternText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 20,
+  },
+  aiRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  aiMiniCard: {
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  aiMiniIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  aiMiniLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  aiMiniText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  regenerateButton: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  regenerateButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  // Locked state styles
   lockedOverlay: {
     alignItems: 'center',
     paddingVertical: 8,

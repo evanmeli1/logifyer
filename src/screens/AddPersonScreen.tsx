@@ -20,6 +20,7 @@ import {
   deleteCustomRelationshipType,
   getCustomRelationshipTypesCount,
   checkPersonNameExists,
+  getAllPeople,
 } from '../database/db';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
@@ -35,6 +36,10 @@ const EMOJI_OPTIONS = [
   '🏠', '🎓', '💪', '🎨', '🎮', '📚', '💻', '🎵',
 ];
 
+// Limits
+const FREE_PEOPLE_LIMIT = 5;
+const PREMIUM_PEOPLE_LIMIT = 50;
+
 interface RelationshipType {
   id: number;
   type: string;
@@ -49,6 +54,7 @@ export default function AddPersonScreen({ navigation }: any) {
   const [relationshipTypes, setRelationshipTypes] = useState<RelationshipType[]>([]);
   const [customCount, setCustomCount] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [peopleCount, setPeopleCount] = useState(0);
   
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -58,6 +64,7 @@ export default function AddPersonScreen({ navigation }: any) {
   useEffect(() => {
     loadRelationshipTypes();
     checkPremiumStatus();
+    checkPeopleLimit();
   }, []);
 
   const loadRelationshipTypes = () => {
@@ -72,6 +79,47 @@ export default function AddPersonScreen({ navigation }: any) {
       setIsPremium(premium);
     } catch (error) {
       console.log('Error checking premium:', error);
+    }
+  };
+
+  const checkPeopleLimit = async () => {
+    const people = getAllPeople();
+    const count = people.length;
+    setPeopleCount(count);
+    
+    // Check premium status first
+    let premium = false;
+    try {
+      premium = await checkSubscription();
+    } catch (error) {
+      console.log('Error checking premium:', error);
+    }
+
+    const limit = premium ? PREMIUM_PEOPLE_LIMIT : FREE_PEOPLE_LIMIT;
+    
+    if (count >= limit) {
+      if (premium) {
+        Alert.alert(
+          'Limit Reached',
+          `You've reached the maximum of ${PREMIUM_PEOPLE_LIMIT} people. Consider removing inactive relationships to add new ones.`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert(
+          'Free Limit Reached',
+          `You can track up to ${FREE_PEOPLE_LIMIT} people on the free plan. Upgrade to Premium to track up to ${PREMIUM_PEOPLE_LIMIT} people.`,
+          [
+            { text: 'Go Back', onPress: () => navigation.goBack() },
+            { 
+              text: 'Upgrade', 
+              onPress: () => {
+                navigation.goBack();
+                navigation.getParent()?.navigate('Settings', { screen: 'Paywall' });
+              }
+            },
+          ]
+        );
+      }
     }
   };
 
@@ -91,6 +139,21 @@ export default function AddPersonScreen({ navigation }: any) {
     // Check for duplicate
     if (checkPersonNameExists(trimmedName)) {
       Alert.alert('Duplicate Name', `"${trimmedName}" already exists. Please use a different name.`);
+      return;
+    }
+
+    // Double-check people limit before saving
+    const currentPeople = getAllPeople();
+    const limit = isPremium ? PREMIUM_PEOPLE_LIMIT : FREE_PEOPLE_LIMIT;
+    
+    if (currentPeople.length >= limit) {
+      Alert.alert(
+        'Limit Reached',
+        isPremium 
+          ? `You've reached the maximum of ${PREMIUM_PEOPLE_LIMIT} people.`
+          : `You can track up to ${FREE_PEOPLE_LIMIT} people on the free plan. Upgrade to Premium for more.`,
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -178,6 +241,7 @@ export default function AddPersonScreen({ navigation }: any) {
   };
 
   const selectedTypeData = relationshipTypes.find(t => t.type === selectedType);
+  const currentLimit = isPremium ? PREMIUM_PEOPLE_LIMIT : FREE_PEOPLE_LIMIT;
 
   return (
     <View style={[styles.wrapper, { backgroundColor: theme.background }]}>
@@ -201,6 +265,20 @@ export default function AddPersonScreen({ navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Limit indicator for free users */}
+        {!isPremium && peopleCount >= FREE_PEOPLE_LIMIT - 2 && (
+          <Animated.View 
+            entering={FadeIn.duration(300)}
+            style={[styles.limitBanner, { backgroundColor: '#FEF3C7' }]}
+          >
+            <Text style={styles.limitBannerIcon}>⚠️</Text>
+            <Text style={styles.limitBannerText}>
+              {peopleCount}/{FREE_PEOPLE_LIMIT} people used. 
+              {peopleCount >= FREE_PEOPLE_LIMIT - 1 ? ' Upgrade for more!' : ''}
+            </Text>
+          </Animated.View>
+        )}
+
         {/* Preview Card */}
         <Animated.View 
           entering={FadeInDown.delay(0).duration(400)}
@@ -520,6 +598,25 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
+  },
+  limitBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 8,
+  },
+  limitBannerIcon: {
+    fontSize: 16,
+  },
+  limitBannerText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#92400E',
   },
   previewCard: {
     marginTop: 20,
