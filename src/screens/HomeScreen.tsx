@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
-import { getAllPeople, getPersonScore, toggleFavorite } from '../database/db';
+import { getAllPeople, getPersonScore, toggleFavorite, getPersonTrend } from '../database/db';
 import { Person } from '../types';
 import { useTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { user } = useAuth();
-  const [people, setPeople] = useState<(Person & { score: number })[]>([]);
+  const [people, setPeople] = useState<(Person & { score: number; trend: string })[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('score-high');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -40,6 +40,7 @@ export default function HomeScreen() {
     const peopleWithScores = peopleData.map(person => ({
       ...person,
       score: getPersonScore(person.id),
+      trend: getPersonTrend(person.id),
     }));
     setPeople(peopleWithScores);
   }, []);
@@ -137,20 +138,31 @@ export default function HomeScreen() {
 
   const filteredPeople = getFilteredAndSortedPeople();
 
+  // Consistent with PersonDetailScreen (80/60/40/20)
   const getHealthColor = (score: number) => {
-    if (score >= 90) return '#10B981';
-    if (score >= 80) return '#84CC16';
-    if (score >= 70) return '#FBBF24';
-    if (score >= 60) return '#F97316';
+    if (score >= 80) return '#10B981';
+    if (score >= 60) return '#22C55E';
+    if (score >= 40) return '#F59E0B';
+    if (score >= 20) return '#F97316';
     return '#EF4444';
   };
 
   const getHealthGrade = (score: number) => {
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
+    if (score >= 80) return 'A';
+    if (score >= 60) return 'B';
+    if (score >= 40) return 'C';
+    if (score >= 20) return 'D';
     return 'F';
+  };
+
+  const getTrendDisplay = (trend: string) => {
+    switch (trend) {
+      case 'improving': return { arrow: '↗', text: 'Improving', color: '#10B981' };
+      case 'declining': return { arrow: '↘', text: 'Declining', color: '#EF4444' };
+      case 'stable': return { arrow: '→', text: 'Stable', color: '#6B7280' };
+      case 'new': return { arrow: '•', text: 'New', color: '#6B7280' };
+      default: return { arrow: '→', text: 'Stable', color: '#6B7280' };
+    }
   };
 
   const HealthRing = ({ score, size = 80 }: { score: number; size?: number }) => {
@@ -197,8 +209,9 @@ export default function HomeScreen() {
     );
   };
 
-  const PersonCard = ({ item, index }: { item: Person & { score: number }; index: number }) => {
+  const PersonCard = ({ item, index }: { item: Person & { score: number; trend: string }; index: number }) => {
     const scale = useSharedValue(1);
+    const trendDisplay = getTrendDisplay(item.trend);
 
     const animatedStyle = useAnimatedStyle(() => ({
       transform: [{ scale: scale.value }]
@@ -244,8 +257,8 @@ export default function HomeScreen() {
                     <Text style={[styles.relationshipType, { color: theme.primary }]}>{item.relationship_type}</Text>
                   </View>
                   <View style={styles.trendContainer}>
-                    <Text style={styles.trendArrow}>↗</Text>
-                    <Text style={styles.trendText}>Improving</Text>
+                    <Text style={[styles.trendArrow, { color: trendDisplay.color }]}>{trendDisplay.arrow}</Text>
+                    <Text style={[styles.trendText, { color: trendDisplay.color }]}>{trendDisplay.text}</Text>
                   </View>
                 </View>
               </View>
@@ -394,6 +407,16 @@ export default function HomeScreen() {
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            ListEmptyComponent={() => (
+              searchQuery ? (
+                <View style={styles.emptySearchState}>
+                  <Text style={styles.emptySearchIcon}>🔍</Text>
+                  <Text style={[styles.emptySearchText, { color: theme.textMuted }]}>
+                    No people found for "{searchQuery}"
+                  </Text>
+                </View>
+              ) : null
+            )}
           />
           
           <TouchableOpacity 
@@ -614,7 +637,6 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontSize: 14,
-    color: '#059669',
     fontFamily: 'Inter_600SemiBold',
   },
   emptyState: {
@@ -666,6 +688,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: 'Inter_700Bold',
     letterSpacing: -0.3,
+  },
+  emptySearchState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptySearchIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptySearchText: {
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',

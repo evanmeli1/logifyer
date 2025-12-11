@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getAllPeople, getPersonScore, getIncidentsByPerson } from '../database/db';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import * as SQLite from 'expo-sqlite';
 import { useTheme } from '../theme';
 import { themeColors } from '../theme/themes';
 import ThemeModal from '../components/ThemeModal';
@@ -55,11 +54,7 @@ export default function StatsScreen() {
     
     let allIncidents: any[] = [];
     people.forEach((person: any) => {
-      const db = SQLite.openDatabaseSync('logifyer.db');
-      const incidents = db.getAllSync(
-        'SELECT * FROM incidents WHERE person_id = ?',
-        [person.id]
-      );
+      const incidents = getIncidentsByPerson(person.id) as any[];
       allIncidents = [...allIncidents, ...incidents];
     });
     
@@ -75,15 +70,16 @@ export default function StatsScreen() {
     const thisWeekIncidents = allIncidents.filter((i: any) => 
       new Date(i.timestamp).getTime() > oneWeekAgo
     );
-    const thisWeekPositive = thisWeekIncidents.filter((i: any) => i.impact > 0).length;
-    const thisWeekNegative = thisWeekIncidents.filter((i: any) => i.impact < 0).length;
+    const thisWeekPositive = thisWeekIncidents.filter((i: any) => i.points > 0).length;
+    const thisWeekNegative = thisWeekIncidents.filter((i: any) => i.points < 0).length;
     
+    // Consistent thresholds: 80/60/40/20
     const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
     scores.forEach((score: number) => {
-      if (score >= 90) gradeDistribution.A++;
-      else if (score >= 80) gradeDistribution.B++;
-      else if (score >= 70) gradeDistribution.C++;
-      else if (score >= 60) gradeDistribution.D++;
+      if (score >= 80) gradeDistribution.A++;
+      else if (score >= 60) gradeDistribution.B++;
+      else if (score >= 40) gradeDistribution.C++;
+      else if (score >= 20) gradeDistribution.D++;
       else gradeDistribution.F++;
     });
     
@@ -97,27 +93,29 @@ export default function StatsScreen() {
     });
   };
 
+  // Consistent thresholds: 80/60/40/20
   const getHealthGrade = (score: number) => {
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
+    if (score >= 80) return 'A';
+    if (score >= 60) return 'B';
+    if (score >= 40) return 'C';
+    if (score >= 20) return 'D';
     return 'F';
   };
 
+  // Consistent colors with HomeScreen
   const getHealthColor = (score: number) => {
-    if (score >= 90) return '#10B981';
-    if (score >= 80) return '#84CC16';
-    if (score >= 70) return '#FBBF24';
-    if (score >= 60) return '#F97316';
+    if (score >= 80) return '#10B981';
+    if (score >= 60) return '#22C55E';
+    if (score >= 40) return '#F59E0B';
+    if (score >= 20) return '#F97316';
     return '#EF4444';
   };
 
   const getTrendInfo = () => {
     if (stats.thisWeekPositive > stats.thisWeekNegative) {
-      return { text: '↗ Improving', color: '#059669', bg: '#ECFDF5' };
+      return { text: '↗ Improving', color: '#10B981', bg: '#ECFDF5' };
     } else if (stats.thisWeekNegative > stats.thisWeekPositive) {
-      return { text: '↘ Declining', color: '#DC2626', bg: '#FEF2F2' };
+      return { text: '↘ Declining', color: '#EF4444', bg: '#FEF2F2' };
     }
     return { text: '→ Stable', color: '#6B7280', bg: '#F3F4F6' };
   };
@@ -269,7 +267,7 @@ export default function StatsScreen() {
             <View style={[styles.activityDivider, { backgroundColor: theme.divider }]} />
             <View style={styles.activityItem}>
               <View style={[styles.activityIconWrapper, styles.negativeIcon]}>
-                <Text style={[styles.activityIcon, { color: '#DC2626' }]}>✕</Text>
+                <Text style={[styles.activityIcon, { color: '#EF4444' }]}>✕</Text>
               </View>
               <Text style={[styles.activityNumber, { color: theme.text }]}>{stats.thisWeekNegative}</Text>
               <Text style={[styles.activityLabel, { color: theme.textMuted }]}>Negative</Text>
@@ -286,7 +284,8 @@ export default function StatsScreen() {
               const percentage = stats.totalPeople > 0 
                 ? (count / stats.totalPeople) * 100 
                 : 0;
-              const gradeColor = getHealthColor(grade === 'A' ? 95 : grade === 'B' ? 85 : grade === 'C' ? 75 : grade === 'D' ? 65 : 55);
+              // Consistent colors: A=80+, B=60+, C=40+, D=20+, F=<20
+              const gradeColor = getHealthColor(grade === 'A' ? 80 : grade === 'B' ? 60 : grade === 'C' ? 40 : grade === 'D' ? 20 : 0);
               return (
                 <View key={grade} style={styles.distributionRow}>
                   <View style={[styles.gradeLabel, { backgroundColor: gradeColor + '20' }]}>
@@ -369,14 +368,14 @@ export default function StatsScreen() {
                     {aiOverview.topConcern && (
                       <View style={[styles.aiMiniCard, { backgroundColor: '#FEF2F2', flex: 1 }]}>
                         <Text style={styles.aiMiniIcon}>⚠️</Text>
-                        <Text style={[styles.aiMiniLabel, { color: '#DC2626' }]}>Top Concern</Text>
+                        <Text style={[styles.aiMiniLabel, { color: '#EF4444' }]}>Top Concern</Text>
                         <Text style={[styles.aiMiniText, { color: '#7F1D1D' }]} numberOfLines={3}>{aiOverview.topConcern}</Text>
                       </View>
                     )}
                     {aiOverview.topStrength && (
                       <View style={[styles.aiMiniCard, { backgroundColor: '#ECFDF5', flex: 1 }]}>
                         <Text style={styles.aiMiniIcon}>💪</Text>
-                        <Text style={[styles.aiMiniLabel, { color: '#059669' }]}>Top Strength</Text>
+                        <Text style={[styles.aiMiniLabel, { color: '#10B981' }]}>Top Strength</Text>
                         <Text style={[styles.aiMiniText, { color: '#065F46' }]} numberOfLines={3}>{aiOverview.topStrength}</Text>
                       </View>
                     )}
@@ -607,7 +606,7 @@ const styles = StyleSheet.create({
   activityIcon: {
     fontSize: 14,
     fontFamily: 'Inter_700Bold',
-    color: '#059669',
+    color: '#10B981',
   },
   activityNumber: {
     fontSize: 28,

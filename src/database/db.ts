@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import { initAICacheTable } from './aiCache';
 import { Person } from '../types';
 
+
 const db = SQLite.openDatabaseSync('logifyer.db');
 
 export const initDatabase = () => {
@@ -129,44 +130,6 @@ export const addPerson = (name: string, relationshipType: string, photoUri?: str
     [name, relationshipType, photoUri || null]
   );
   return result.lastInsertRowId;
-};
-
-export const updatePerson = (personId: number, updates: Partial<Person>) => {
-  const fields: string[] = [];
-  const values: any[] = [];
-
-  if (updates.name !== undefined) {
-    fields.push('name = ?');
-    values.push(updates.name);
-  }
-
-  if (updates.photo_uri !== undefined) {
-    fields.push('photo_uri = ?');
-    values.push(updates.photo_uri);
-  }
-
-  if (updates.relationship_type !== undefined) {
-    fields.push('relationship_type = ?');
-    values.push(updates.relationship_type);
-  }
-
-  if (updates.archived !== undefined) {
-    fields.push('archived = ?');
-    values.push(updates.archived ? 1 : 0);
-  }
-
-  if (updates.is_favorite !== undefined) {
-    fields.push('is_favorite = ?');
-    values.push(updates.is_favorite ? 1 : 0);
-  }
-
-  // nothing to update
-  if (fields.length === 0) return;
-
-  db.runSync(
-    `UPDATE people SET ${fields.join(', ')} WHERE id = ?`,
-    [...values, personId]
-  );
 };
 
 export const getAllPeople = () => {
@@ -359,6 +322,28 @@ export const addCustomRelationshipType = (type: string, emoji: string) => {
 export const deleteCustomRelationshipType = (type: string) => {
   // Only delete if it's custom
   db.runSync('DELETE FROM relationship_types WHERE type = ? AND is_custom = 1', [type]);
+};
+
+export const getPersonTrend = (personId: number): 'improving' | 'declining' | 'stable' | 'new' => {
+  const incidents = db.getAllSync(
+    'SELECT points FROM incidents WHERE person_id = ? ORDER BY timestamp DESC',
+    [personId]
+  ) as any[];
+
+  if (incidents.length < 2) {
+    return 'new';
+  }
+
+  const midpoint = Math.ceil(incidents.length / 2);
+  const recent = incidents.slice(0, midpoint);
+  const older = incidents.slice(midpoint);
+
+  const recentAvg = recent.reduce((sum: number, i: any) => sum + i.points, 0) / recent.length;
+  const olderAvg = older.reduce((sum: number, i: any) => sum + i.points, 0) / older.length;
+
+  if (recentAvg > olderAvg + 2) return 'improving';
+  if (recentAvg < olderAvg - 2) return 'declining';
+  return 'stable';
 };
 
 export const checkPersonNameExists = (name: string) => {
