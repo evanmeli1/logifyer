@@ -160,7 +160,9 @@ export const getPersonScore = (personId: number) => {
     const monthsOld = (now.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
     const daysOld = (now.getTime() - incidentDate.getTime()) / (1000 * 60 * 60 * 24);
 
-    if (recencyBoostEnabled && daysOld <= 30) {
+    // Only apply recency boost to NON-major incidents
+    // Major incidents already have their multiplier applied at storage time
+    if (recencyBoostEnabled && daysOld <= 30 && incident.is_major === 0) {
       points = points * 1.5;
     }
 
@@ -352,4 +354,33 @@ export const checkPersonNameExists = (name: string) => {
     [name.trim()]
   );
   return (result?.count || 0) > 0;
+};
+
+export const deleteAllData = () => {
+  try {
+    // Delete all incidents
+    db.runSync('DELETE FROM incidents');
+    
+    // Delete all people
+    db.runSync('DELETE FROM people');
+    
+    // Delete custom categories only (keep default ones)
+    db.runSync('DELETE FROM categories WHERE is_custom = 1');
+    
+    // Delete custom relationship types only (keep default ones)
+    db.runSync('DELETE FROM relationship_types WHERE is_custom = 1');
+    
+    // Clear AI cache (if table exists)
+    try {
+      db.runSync('DELETE FROM ai_cache');
+    } catch (e) {
+      // Table doesn't exist yet, that's fine
+      console.log('AI cache table does not exist, skipping');
+    }
+    
+    console.log('All user data deleted successfully');
+  } catch (error) {
+    console.error('Error deleting all data:', error);
+    throw error;
+  }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Modal,
   ScrollView, TextInput, Pressable, Dimensions, Image, ActionSheetIOS, Platform,
@@ -49,6 +49,10 @@ export default function PersonDetailScreen({ route }: any) {
   const [visibleCount, setVisibleCount] = useState(50);
   const menuScale = useSharedValue(0);
   const menuOpacity = useSharedValue(0);
+  
+  // Refs for cleanup
+  const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -59,7 +63,17 @@ export default function PersonDetailScreen({ route }: any) {
   const closeMenu = () => {
     menuScale.value = withSpring(0, { damping: 20, stiffness: 400 });
     menuOpacity.value = withTiming(0, { duration: 100 });
-    setTimeout(() => setMenuVisible(false), 150);
+    
+    // Clear any existing timeout
+    if (menuTimeoutRef.current) {
+      clearTimeout(menuTimeoutRef.current);
+    }
+    
+    menuTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setMenuVisible(false);
+      }
+    }, 150);
   };
 
   const menuAnimatedStyle = useAnimatedStyle(() => ({
@@ -72,9 +86,13 @@ export default function PersonDetailScreen({ route }: any) {
   }));
 
   const ensurePhotoDir = async () => {
-    const dirInfo = await FileSystem.getInfoAsync(PHOTO_DIR);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(PHOTO_DIR, { intermediates: true });
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(PHOTO_DIR);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(PHOTO_DIR, { intermediates: true });
+      }
+    } catch (error) {
+      console.error('Error creating photo directory:', error);
     }
   };
 
@@ -82,13 +100,16 @@ export default function PersonDetailScreen({ route }: any) {
     try {
       const photoPath = `${PHOTO_DIR}${personId}.jpg`;
       const photoInfo = await FileSystem.getInfoAsync(photoPath);
-      if (photoInfo.exists) {
+      if (photoInfo.exists && isMountedRef.current) {
         setPhotoUri(photoPath);
-      } else {
+      } else if (isMountedRef.current) {
         setPhotoUri(null);
       }
     } catch (error) {
-      setPhotoUri(null);
+      console.error('Error loading photo:', error);
+      if (isMountedRef.current) {
+        setPhotoUri(null);
+      }
     }
   };
 
@@ -97,10 +118,13 @@ export default function PersonDetailScreen({ route }: any) {
       await ensurePhotoDir();
       const photoPath = `${PHOTO_DIR}${personId}.jpg`;
       await FileSystem.copyAsync({ from: uri, to: photoPath });
-      setPhotoUri(photoPath + '?' + Date.now());
+      if (isMountedRef.current) {
+        // Use timestamp for cache busting only when actually needed
+        setPhotoUri(photoPath + '?' + Date.now());
+      }
     } catch (error) {
-      console.log('Save photo error:', error);
-      Alert.alert('Error', `Failed to save photo: ${JSON.stringify(error)}`);
+      console.error('Save photo error:', error);
+      Alert.alert('Error', 'Failed to save photo. Please check storage permissions and try again.');
     }
   };
 
@@ -111,9 +135,12 @@ export default function PersonDetailScreen({ route }: any) {
       if (photoInfo.exists) {
         await FileSystem.deleteAsync(photoPath);
       }
-      setPhotoUri(null);
+      if (isMountedRef.current) {
+        setPhotoUri(null);
+      }
     } catch (error) {
-      console.log('Error removing photo:', error);
+      console.error('Error removing photo:', error);
+      Alert.alert('Error', 'Failed to remove photo');
     }
   };
 
@@ -177,37 +204,71 @@ export default function PersonDetailScreen({ route }: any) {
         await savePhoto(result.assets[0].uri);
       }
     } catch (error) {
+      console.error('Pick image error:', error);
       Alert.alert('Error', 'Failed to pick image');
     }
   };
 
   const loadData = useCallback(() => {
-    const personData = getPersonById(personId) as Person;
-    const incidentsData = getIncidentsByPerson(personId);
-    const currentScore = getPersonScore(personId);
-    setPerson(personData);
-    setIncidents(incidentsData);
-    setScore(currentScore);
+    try {
+      const personData = getPersonById(personId) as Person;
+      const incidentsData = getIncidentsByPerson(personId);
+      const currentScore = getPersonScore(personId);
+      
+      if (isMountedRef.current) {
+        setPerson(personData);
+        setIncidents(incidentsData);
+        setScore(currentScore);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      if (isMountedRef.current) {
+        Alert.alert('Error', 'Failed to load person data');
+      }
+    }
   }, [personId]);
 
   useFocusEffect(
     useCallback(() => {
+      isMountedRef.current = true;
+      
+      // Reset visible count when screen focuses
+      setVisibleCount(50);
+      
       loadData();
       loadPhoto();
+      
       try {
         const types = getAllRelationshipTypes() as RelationshipType[];
-        setRelationshipTypes(types);
-      } catch (e) {}
+        if (isMountedRef.current) {
+          setRelationshipTypes(types);
+        }
+      } catch (error) {
+        console.error('Error loading relationship types:', error);
+      }
       
       const checkPremiumStatus = async () => {
         try {
           const premium = await checkSubscription();
-          setIsPremium(premium);
+          if (isMountedRef.current) {
+            setIsPremium(premium);
+          }
         } catch (error) {
-          setIsPremium(false);
+          console.error('Error checking premium:', error);
+          if (isMountedRef.current) {
+            setIsPremium(false);
+          }
         }
       };
       checkPremiumStatus();
+
+      return () => {
+        isMountedRef.current = false;
+        // Cleanup menu timeout
+        if (menuTimeoutRef.current) {
+          clearTimeout(menuTimeoutRef.current);
+        }
+      };
     }, [loadData])
   );
 
@@ -217,7 +278,11 @@ export default function PersonDetailScreen({ route }: any) {
       setEditRelationship(person.relationship_type);
     }
     closeMenu();
-    setTimeout(() => setShowEditModal(true), 200);
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        setShowEditModal(true);
+      }
+    }, 200);
   };
 
   const handleSaveEdit = () => {
@@ -231,10 +296,16 @@ export default function PersonDetailScreen({ route }: any) {
       Alert.alert('Error', 'A person with this name already exists');
       return;
     }
-    const db = getDatabase();
-    db.runSync('UPDATE people SET name = ?, relationship_type = ? WHERE id = ?', [trimmedName, editRelationship, personId]);
-    setShowEditModal(false);
-    loadData();
+    
+    try {
+      const db = getDatabase();
+      db.runSync('UPDATE people SET name = ?, relationship_type = ? WHERE id = ?', [trimmedName, editRelationship, personId]);
+      setShowEditModal(false);
+      loadData();
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      Alert.alert('Error', 'Failed to save changes');
+    }
   };
 
   const isEditValid = () => {
@@ -247,41 +318,88 @@ export default function PersonDetailScreen({ route }: any) {
   const handleResetScore = () => {
     closeMenu();
     setTimeout(() => {
-      Alert.alert('Reset Score', `Delete all incidents for ${person?.name}? This cannot be undone.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: () => { resetPersonScore(personId); loadData(); } },
-      ]);
+      if (isMountedRef.current) {
+        Alert.alert('Reset Score', `Delete all incidents for ${person?.name}? This cannot be undone.`, [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Reset', 
+            style: 'destructive', 
+            onPress: () => { 
+              try {
+                resetPersonScore(personId); 
+                loadData();
+              } catch (error) {
+                console.error('Error resetting score:', error);
+                Alert.alert('Error', 'Failed to reset score');
+              }
+            } 
+          },
+        ]);
+      }
     }, 200);
   };
 
   const handleDelete = () => {
     closeMenu();
     setTimeout(() => {
-      Alert.alert('Delete Person', `Permanently delete ${person?.name} and all their incidents?`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.prompt('Confirm Delete', 'Type DELETE to confirm', [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async (text?: string) => {
-                  if (text === 'DELETE') {
-                    await removePhoto();
-                    deletePerson(personId);
-                    navigation.goBack();
-                  } else {
-                    Alert.alert('Error', 'You must type DELETE to confirm');
-                  }
+      if (!isMountedRef.current) return;
+      
+      if (Platform.OS === 'ios') {
+        // iOS - Use Alert.prompt
+        Alert.alert('Delete Person', `Permanently delete ${person?.name} and all their incidents?`, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              Alert.prompt('Confirm Delete', 'Type DELETE to confirm', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async (text?: string) => {
+                    if (text === 'DELETE') {
+                      try {
+                        await removePhoto();
+                        deletePerson(personId);
+                        navigation.goBack();
+                      } catch (error) {
+                        console.error('Error deleting person:', error);
+                        Alert.alert('Error', 'Failed to delete person');
+                      }
+                    } else {
+                      Alert.alert('Error', 'You must type DELETE to confirm');
+                    }
+                  },
                 },
-              },
-            ], 'plain-text');
+              ], 'plain-text');
+            },
           },
-        },
-      ]);
+        ]);
+      } else {
+        // Android - Show confirmation with "are you sure" pattern
+        Alert.alert(
+          'Delete Person',
+          `Permanently delete ${person?.name} and all their incidents? This cannot be undone.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Delete Forever',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await removePhoto();
+                  deletePerson(personId);
+                  navigation.goBack();
+                } catch (error) {
+                  console.error('Error deleting person:', error);
+                  Alert.alert('Error', 'Failed to delete person');
+                }
+              },
+            },
+          ]
+        );
+      }
     }, 200);
   };
 
@@ -307,11 +425,18 @@ export default function PersonDetailScreen({ route }: any) {
     setLoadingInsights(true);
     try {
       const insights = await generatePersonInsights(personId, person!.name, incidents, score, forceRegenerate);
-      setAiInsights(insights);
+      if (isMountedRef.current) {
+        setAiInsights(insights);
+      }
     } catch (error) {
-      Alert.alert('Error', 'Failed to generate insights. Check your API key and internet connection.');
+      console.error('Error generating insights:', error);
+      if (isMountedRef.current) {
+        Alert.alert('Error', 'Failed to generate insights. Check your API key and internet connection.');
+      }
     } finally {
-      setLoadingInsights(false);
+      if (isMountedRef.current) {
+        setLoadingInsights(false);
+      }
     }
   };
 
@@ -326,7 +451,19 @@ export default function PersonDetailScreen({ route }: any) {
   const handleDeleteIncident = (incidentId: number) => {
     Alert.alert('Delete Incident', 'Are you sure you want to delete this incident?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { deleteIncident(incidentId); loadData(); } },
+      { 
+        text: 'Delete', 
+        style: 'destructive', 
+        onPress: () => { 
+          try {
+            deleteIncident(incidentId); 
+            loadData();
+          } catch (error) {
+            console.error('Error deleting incident:', error);
+            Alert.alert('Error', 'Failed to delete incident');
+          }
+        } 
+      },
     ]);
   };
 
@@ -334,7 +471,6 @@ export default function PersonDetailScreen({ route }: any) {
     const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
-
 
   const toggleSelection = (incidentId: number) => {
     if (selectedIncidents.includes(incidentId)) {
@@ -351,10 +487,15 @@ export default function PersonDetailScreen({ route }: any) {
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
-          selectedIncidents.forEach(id => deleteIncident(id));
-          setSelectedIncidents([]);
-          setSelectionMode(false);
-          loadData();
+          try {
+            selectedIncidents.forEach(id => deleteIncident(id));
+            setSelectedIncidents([]);
+            setSelectionMode(false);
+            loadData();
+          } catch (error) {
+            console.error('Error bulk deleting:', error);
+            Alert.alert('Error', 'Failed to delete some incidents');
+          }
         },
       },
     ]);
@@ -423,6 +564,9 @@ export default function PersonDetailScreen({ route }: any) {
   }
 
   const health = getHealthGrade(score);
+  const positiveRate = incidents.length > 0 
+    ? Math.round((incidents.filter(i => i.points > 0).length / incidents.length) * 100)
+    : 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -489,7 +633,7 @@ export default function PersonDetailScreen({ route }: any) {
               <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]} onPress={() => { closeMenu(); setTimeout(() => setSelectionMode(true), 200); }} activeOpacity={0.7}>
+            <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]} onPress={() => { closeMenu(); setTimeout(() => { if (isMountedRef.current) setSelectionMode(true); }, 200); }} activeOpacity={0.7}>
               <View style={[styles.menuItemIcon, { backgroundColor: '#3B82F615' }]}>
                 <Text style={styles.menuItemIconText}>☑️</Text>
               </View>
@@ -660,7 +804,7 @@ export default function PersonDetailScreen({ route }: any) {
                   <View style={[styles.patternRow, { borderBottomWidth: 0 }]}>
                     <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Positive Rate</Text>
                     <Text style={[styles.patternValue, { color: '#10B981' }]}>
-                      {Math.round((incidents.filter(i => i.points > 0).length / incidents.length) * 100)}%
+                      {positiveRate}%
                     </Text>
                   </View>
                 </View>
@@ -722,7 +866,6 @@ export default function PersonDetailScreen({ route }: any) {
           ) : null
         )}
       />
-
 
       {selectionMode ? (
         <View style={[styles.selectionToolbar, { backgroundColor: theme.card, borderTopColor: theme.divider }]}>
@@ -1409,21 +1552,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_300Light',
   },
   viewMoreContainer: {
-  alignItems: 'center',
-  paddingVertical: 16,
-  gap: 12,
-},
-showingText: {
-  fontSize: 13,
-  fontFamily: 'Inter_500Medium',
-},
-viewMoreButton: {
-  paddingHorizontal: 20,
-  paddingVertical: 10,
-  borderRadius: 20,
-},
-viewMoreText: {
-  fontSize: 14,
-  fontFamily: 'Inter_600SemiBold',
-},
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  showingText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  viewMoreButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
 });

@@ -15,23 +15,54 @@ export default function ManageCategoriesScreen() {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [isLoadingPremium, setIsLoadingPremium] = useState(true);
 
   const loadCategories = async () => {
-    const categoriesData = getAllCategories() as Category[];
-    setCategories(categoriesData);
+    let isMounted = true;
+
+    try {
+      const categoriesData = getAllCategories() as Category[];
+      if (isMounted) {
+        setCategories(categoriesData);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      if (isMounted) {
+        Alert.alert('Error', 'Failed to load categories. Please try again.');
+      }
+    }
     
     // Check premium status
     try {
       const premium = await checkSubscription();
-      setIsPremium(premium);
-    } catch (e) {
-      setIsPremium(false);
+      if (isMounted) {
+        setIsPremium(premium);
+        setIsLoadingPremium(false);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      if (isMounted) {
+        setIsPremium(false);
+        setIsLoadingPremium(false);
+      }
     }
+
+    return () => {
+      isMounted = false;
+    };
   };
 
   useFocusEffect(
     React.useCallback(() => {
-      loadCategories();
+      let cleanup: (() => void) | undefined;
+      
+      loadCategories().then(cleanupFn => {
+        cleanup = cleanupFn;
+      });
+
+      return () => {
+        if (cleanup) cleanup();
+      };
     }, [])
   );
 
@@ -50,17 +81,25 @@ export default function ManageCategoriesScreen() {
   const slotsRemaining = maxCustom - customCount;
 
   const handleDelete = (categoryId: number, categoryName: string) => {
+    // Escape quotes in category name for display
+    const escapedName = categoryName.replace(/"/g, '\\"');
+    
     Alert.alert(
       'Delete Category',
-      `Delete "${categoryName}"? This will also delete all incidents using this category.`,
+      `Delete "${escapedName}"? This will also delete all incidents using this category.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            deleteCategory(categoryId);
-            loadCategories();
+            try {
+              deleteCategory(categoryId);
+              loadCategories();
+            } catch (error) {
+              console.error('Error deleting category:', error);
+              Alert.alert('Error', 'Failed to delete category. Please try again.');
+            }
           },
         },
       ]
@@ -171,7 +210,11 @@ export default function ManageCategoriesScreen() {
                   : 'Limit reached'}
               </Text>
             </View>
-            {isPremium ? (
+            {isLoadingPremium ? (
+              <View style={[styles.proBadge, { backgroundColor: theme.primary + '15' }]}>
+                <Text style={[styles.proBadgeText, { color: theme.primary }]}>...</Text>
+              </View>
+            ) : isPremium ? (
               <View style={[styles.proBadge, { backgroundColor: theme.primary + '15' }]}>
                 <Text style={[styles.proBadgeText, { color: theme.primary }]}>PRO</Text>
               </View>
@@ -268,11 +311,12 @@ export default function ManageCategoriesScreen() {
       <AddCategoryModal
         visible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
-        onAdd={() => {
-          loadCategories();
+        onAdd={async () => {
+          await loadCategories();
           setIsAddModalVisible(false);
         }}
         theme={theme}
+        existingCategories={categories}
       />
 
       <EditCategoryModal
@@ -282,8 +326,8 @@ export default function ManageCategoriesScreen() {
           setIsEditModalVisible(false);
           setEditingCategory(null);
         }}
-        onSave={() => {
-          loadCategories();
+        onSave={async () => {
+          await loadCategories();
           setIsEditModalVisible(false);
           setEditingCategory(null);
         }}
@@ -295,12 +339,13 @@ export default function ManageCategoriesScreen() {
           setEditingCategory(null);
         }}
         theme={theme}
+        existingCategories={categories}
       />
     </View>
   );
 }
 
-function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
+function AddCategoryModal({ visible, onClose, onAdd, theme, existingCategories }: any) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
   const [points, setPoints] = useState('5');
@@ -315,6 +360,23 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
 
   const displayedEmojis = isPositive ? positiveEmojis : negativeEmojis;
 
+  // Reset form when modal opens
+  React.useEffect(() => {
+    if (visible) {
+      setName('');
+      setEmoji('');
+      setPoints('5');
+      setIsPositive(false);
+    }
+  }, [visible]);
+
+  const checkDuplicateName = (nameToCheck: string): boolean => {
+    const trimmedName = nameToCheck.trim().toLowerCase();
+    return existingCategories.some(
+      (cat: Category) => cat.name.toLowerCase() === trimmedName
+    );
+  };
+
   const handleSave = () => {
     const trimmedName = name.trim();
     
@@ -326,13 +388,17 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
       Alert.alert('Error', 'Name must be at least 2 characters');
       return;
     }
+    if (checkDuplicateName(trimmedName)) {
+      Alert.alert('Error', 'A category with this name already exists');
+      return;
+    }
     if (!emoji) {
       Alert.alert('Error', 'Please select an emoji');
       return;
     }
     
     const pointsNum = Number(points);
-    if (!points || isNaN(pointsNum)) {
+    if (!points || isNaN(pointsNum) || pointsNum === 0) {
       Alert.alert('Error', 'Please enter valid points');
       return;
     }
@@ -341,29 +407,20 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
       return;
     }
 
-    const pointsValue = isPositive ? Math.abs(pointsNum) : -Math.abs(pointsNum);
-    addCustomCategory(trimmedName, emoji, pointsValue, isPositive);
-    
-    resetForm();
-    onAdd();
-  };
-
-  const resetForm = () => {
-    setName('');
-    setEmoji('');
-    setPoints('5');
-    setIsPositive(false);
-  };
-
-  const resetAndClose = () => {
-    resetForm();
-    onClose();
+    try {
+      const pointsValue = isPositive ? Math.abs(pointsNum) : -Math.abs(pointsNum);
+      addCustomCategory(trimmedName, emoji, pointsValue, isPositive);
+      onAdd();
+    } catch (error) {
+      console.error('Error creating category:', error);
+      Alert.alert('Error', 'Failed to create category. Please try again.');
+    }
   };
 
   const handlePointsChange = (text: string) => {
     const numericText = text.replace(/[^0-9]/g, '');
     if (numericText === '') {
-      setPoints('');
+      setPoints('1'); // Default to MIN_POINTS instead of empty
     } else {
       const num = parseInt(numericText, 10);
       if (num <= MAX_POINTS) {
@@ -372,7 +429,8 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
     }
   };
 
-  const isValid = name.trim().length >= 2 && emoji && points && Number(points) >= MIN_POINTS;
+  const pointsValue = points ? Number(points) : MIN_POINTS;
+  const isValid = name.trim().length >= 2 && emoji && pointsValue >= MIN_POINTS;
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -380,7 +438,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
         <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.divider }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>New Category</Text>
-            <TouchableOpacity onPress={resetAndClose} style={styles.modalCloseButton}>
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
               <Text style={[styles.modalClose, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -428,23 +486,40 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               <Text style={[styles.inputLabel, { color: theme.textMuted }]}>EMOJI</Text>
               {!emoji && <Text style={styles.requiredText}>Required</Text>}
             </View>
-            <View style={styles.emojiGrid}>
-              {displayedEmojis.map((e) => (
-                <TouchableOpacity
-                  key={e}
-                  style={[
-                    styles.emojiButton,
-                    { borderColor: theme.divider, backgroundColor: theme.backgroundSecondary },
-                    emoji === e && { 
-                      borderColor: isPositive ? '#10B981' : '#EF4444', 
-                      backgroundColor: (isPositive ? '#10B981' : '#EF4444') + '15' 
-                    }
-                  ]}
-                  onPress={() => setEmoji(e)}
-                >
-                  <Text style={styles.emojiText}>{e}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.emojiInputRow}>
+              <View style={[
+                styles.emojiPreviewBox, 
+                { 
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: emoji ? (isPositive ? '#10B981' : '#EF4444') : theme.divider,
+                }
+              ]}>
+                <Text style={styles.emojiPreviewText}>{emoji || '?'}</Text>
+              </View>
+              <TextInput
+                style={[
+                  styles.emojiCustomInput,
+                  { 
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.divider,
+                    color: theme.text,
+                  }
+                ]}
+                placeholder="Paste or type emoji"
+                placeholderTextColor={theme.textMuted}
+                value={emoji}
+                onChangeText={(text) => {
+                  // Match any emoji including multi-character sequences
+                  const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+                  const matches = text.match(emojiRegex);
+                  if (matches && matches.length > 0) {
+                    setEmoji(matches[0]); // Take first emoji
+                  } else if (text === '') {
+                    setEmoji('');
+                  }
+                }}
+                maxLength={4}
+              />
             </View>
 
             <View style={styles.labelRow}>
@@ -464,7 +539,9 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
                     ? theme.divider 
                     : name.trim().length < 2 
                       ? '#EF4444' 
-                      : '#10B981',
+                      : checkDuplicateName(name.trim())
+                        ? '#EF4444'
+                        : '#10B981',
                   backgroundColor: theme.backgroundSecondary,
                   color: theme.text,
                 }
@@ -478,6 +555,9 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
             {name.trim().length === 1 && (
               <Text style={styles.errorText}>Name must be at least 2 characters</Text>
             )}
+            {name.trim().length >= 2 && checkDuplicateName(name.trim()) && (
+              <Text style={styles.errorText}>A category with this name already exists</Text>
+            )}
 
             <View style={styles.labelRow}>
               <Text style={[styles.inputLabel, { color: theme.textMuted }]}>POINTS</Text>
@@ -489,7 +569,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               <TouchableOpacity
                 style={[styles.pointsBtn, { backgroundColor: theme.backgroundSecondary }]}
                 onPress={() => {
-                  const current = Number(points) || MIN_POINTS;
+                  const current = pointsValue;
                   if (current > MIN_POINTS) setPoints(String(current - 1));
                 }}
               >
@@ -504,7 +584,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
                     color: isPositive ? '#10B981' : '#EF4444',
                   }
                 ]}
-                keyboardType="numeric"
+                keyboardType="number-pad"
                 value={points}
                 onChangeText={handlePointsChange}
                 textAlign="center"
@@ -513,7 +593,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
               <TouchableOpacity
                 style={[styles.pointsBtn, { backgroundColor: theme.backgroundSecondary }]}
                 onPress={() => {
-                  const current = Number(points) || 0;
+                  const current = pointsValue;
                   if (current < MAX_POINTS) setPoints(String(current + 1));
                 }}
               >
@@ -527,7 +607,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
                   styles.pointsPreviewText, 
                   { color: isPositive ? '#10B981' : '#EF4444' }
                 ]}>
-                  {isPositive ? '+' : '-'}{points || '0'} pts
+                  {pointsValue > 0 ? (isPositive ? '+' : '-') : ''}{pointsValue} pts
                 </Text>
               </View>
             </View>
@@ -548,7 +628,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
                       styles.previewPoints, 
                       { color: isPositive ? '#10B981' : '#EF4444' }
                     ]}>
-                      {isPositive ? '+' : '-'}{points || '0'} points
+                      {pointsValue > 0 ? (isPositive ? '+' : '-') : ''}{pointsValue} points
                     </Text>
                   </View>
                 </View>
@@ -576,34 +656,42 @@ function AddCategoryModal({ visible, onClose, onAdd, theme }: any) {
   );
 }
 
-function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme }: any) {
+function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme, existingCategories }: any) {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
   const [customEmoji, setCustomEmoji] = useState('');
   const [points, setPoints] = useState('5');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isPositive, setIsPositive] = useState(false);
 
   const MAX_NAME_LENGTH = 30;
   const MAX_POINTS = 20;
   const MIN_POINTS = 1;
 
-  const isPositive = category?.is_positive === 1;
   const negativeEmojis = ['😡', '😤', '🤬', '😒', '🙄', '😠', '💔', '😢', '🚫', '⏰', '💸', '🤥', '👻', '🔥', '💢', '😰'];
   const positiveEmojis = ['😊', '😄', '🥰', '❤️', '💪', '🎉', '✨', '🌟', '👍', '🙌', '✅', '👂', '🤗', '💯', '🏆', '💝'];
   const displayedEmojis = isPositive ? positiveEmojis : negativeEmojis;
   const color = isPositive ? '#10B981' : '#EF4444';
 
   React.useEffect(() => {
-    if (category) {
+    if (category && visible) {
       setName(category.name);
       setEmoji(category.emoji);
       setCustomEmoji('');
       setPoints(String(Math.abs(category.default_points)));
       setShowEmojiPicker(false);
+      setIsPositive(category.is_positive === 1);
     }
-  }, [category]);
+  }, [category, visible]);
 
-  const handleSave = () => {
+  const checkDuplicateName = (nameToCheck: string): boolean => {
+    const trimmedName = nameToCheck.trim().toLowerCase();
+    return existingCategories.some(
+      (cat: Category) => cat.name.toLowerCase() === trimmedName && cat.id !== category?.id
+    );
+  };
+
+  const handleSave = async () => {
     const trimmedName = name.trim();
     const finalEmoji = customEmoji || emoji;
     
@@ -615,13 +703,17 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
       Alert.alert('Error', 'Name must be at least 2 characters');
       return;
     }
+    if (checkDuplicateName(trimmedName)) {
+      Alert.alert('Error', 'A category with this name already exists');
+      return;
+    }
     if (!finalEmoji) {
       Alert.alert('Error', 'Please select an emoji');
       return;
     }
     
     const pointsNum = Number(points);
-    if (!points || isNaN(pointsNum)) {
+    if (!points || isNaN(pointsNum) || pointsNum === 0) {
       Alert.alert('Error', 'Please enter valid points');
       return;
     }
@@ -630,20 +722,25 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
       return;
     }
 
-    const db = getDatabase();
-    const pointsValue = isPositive ? Math.abs(pointsNum) : -Math.abs(pointsNum);
-    db.runSync(
-      'UPDATE categories SET name = ?, emoji = ?, default_points = ? WHERE id = ?',
-      [trimmedName, finalEmoji, pointsValue, category.id]
-    );
-    
-    onSave();
+    try {
+      const db = getDatabase();
+      const pointsValue = isPositive ? Math.abs(pointsNum) : -Math.abs(pointsNum);
+      db.runSync(
+        'UPDATE categories SET name = ?, emoji = ?, default_points = ?, is_positive = ? WHERE id = ?',
+        [trimmedName, finalEmoji, pointsValue, isPositive ? 1 : 0, category.id]
+      );
+      
+      await onSave();
+    } catch (error) {
+      console.error('Error updating category:', error);
+      Alert.alert('Error', 'Failed to update category. Please try again.');
+    }
   };
 
   const handlePointsChange = (text: string) => {
     const numericText = text.replace(/[^0-9]/g, '');
     if (numericText === '') {
-      setPoints('');
+      setPoints('1'); // Default to MIN_POINTS instead of empty
     } else {
       const num = parseInt(numericText, 10);
       if (num <= MAX_POINTS) {
@@ -653,11 +750,13 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
   };
 
   const handleCustomEmojiChange = (text: string) => {
-    const emojiRegex = /\p{Emoji}/u;
-    const match = text.match(emojiRegex);
-    if (match) {
-      setCustomEmoji(match[0]);
+    // Match any emoji including multi-character sequences
+    const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+    const matches = text.match(emojiRegex);
+    if (matches && matches.length > 0) {
+      setCustomEmoji(matches[0]); // Take first emoji
       setEmoji('');
+      setShowEmojiPicker(false); // Close picker when custom emoji is entered
     } else if (text === '') {
       setCustomEmoji('');
     }
@@ -670,7 +769,8 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
   };
 
   const finalEmoji = customEmoji || emoji;
-  const isValid = name.trim().length >= 2 && finalEmoji && points && Number(points) >= MIN_POINTS;
+  const pointsValue = points ? Number(points) : MIN_POINTS;
+  const isValid = name.trim().length >= 2 && finalEmoji && pointsValue >= MIN_POINTS;
 
   if (!category) return null;
 
@@ -682,10 +782,39 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
           <View style={[styles.editModalHeader, { borderBottomColor: theme.divider }]}>
             <Text style={[styles.editModalTitle, { color: theme.text }]}>Edit Category</Text>
             <View style={styles.editHeaderRight}>
-              <View style={[styles.editTypeBadge, { backgroundColor: color + '15' }]}>
-                <Text style={[styles.editTypeText, { color }]}>
-                  {isPositive ? '👍 Positive' : '👎 Negative'}
-                </Text>
+              <View style={styles.editTypeToggle}>
+                <TouchableOpacity
+                  style={[
+                    styles.editTypeToggleBtn,
+                    { backgroundColor: theme.backgroundSecondary },
+                    !isPositive && { backgroundColor: '#EF444415', borderWidth: 2, borderColor: '#EF4444' }
+                  ]}
+                  onPress={() => setIsPositive(false)}
+                >
+                  <Text style={[
+                    styles.editTypeToggleText,
+                    { color: theme.textMuted },
+                    !isPositive && { color: '#EF4444', fontFamily: 'Inter_700Bold' }
+                  ]}>
+                    👎
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.editTypeToggleBtn,
+                    { backgroundColor: theme.backgroundSecondary },
+                    isPositive && { backgroundColor: '#10B98115', borderWidth: 2, borderColor: '#10B981' }
+                  ]}
+                  onPress={() => setIsPositive(true)}
+                >
+                  <Text style={[
+                    styles.editTypeToggleText,
+                    { color: theme.textMuted },
+                    isPositive && { color: '#10B981', fontFamily: 'Inter_700Bold' }
+                  ]}>
+                    👍
+                  </Text>
+                </TouchableOpacity>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.editCloseBtn}>
                 <Text style={[styles.editCloseBtnText, { color: theme.textMuted }]}>✕</Text>
@@ -710,7 +839,11 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                   styles.editNameInput,
                   { 
                     backgroundColor: theme.backgroundSecondary,
-                    borderColor: name.trim().length < 2 ? theme.divider : color,
+                    borderColor: name.trim().length < 2 
+                      ? theme.divider 
+                      : checkDuplicateName(name.trim())
+                        ? '#EF4444'
+                        : color,
                     color: theme.text,
                   }
                 ]}
@@ -720,6 +853,9 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                 onChangeText={(text) => setName(text.slice(0, MAX_NAME_LENGTH))}
                 maxLength={MAX_NAME_LENGTH}
               />
+              {name.trim().length >= 2 && checkDuplicateName(name.trim()) && (
+                <Text style={styles.errorText}>A category with this name already exists</Text>
+              )}
             </View>
 
             {/* Emoji Section */}
@@ -752,7 +888,7 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                   placeholderTextColor={theme.textMuted}
                   value={customEmoji}
                   onChangeText={handleCustomEmojiChange}
-                  maxLength={2}
+                  maxLength={4}
                 />
               </View>
 
@@ -783,7 +919,7 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                 <TouchableOpacity
                   style={[styles.editPointsBtn, { backgroundColor: theme.backgroundSecondary }]}
                   onPress={() => {
-                    const current = Number(points) || MIN_POINTS;
+                    const current = pointsValue;
                     if (current > MIN_POINTS) setPoints(String(current - 1));
                   }}
                 >
@@ -792,14 +928,14 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                 
                 <View style={[styles.editPointsDisplay, { backgroundColor: color + '12' }]}>
                   <Text style={[styles.editPointsValue, { color }]}>
-                    {isPositive ? '+' : '-'}{points || '0'}
+                    {pointsValue > 0 ? (isPositive ? '+' : '-') : ''}{pointsValue}
                   </Text>
                 </View>
                 
                 <TouchableOpacity
                   style={[styles.editPointsBtn, { backgroundColor: theme.backgroundSecondary }]}
                   onPress={() => {
-                    const current = Number(points) || 0;
+                    const current = pointsValue;
                     if (current < MAX_POINTS) setPoints(String(current + 1));
                   }}
                 >
@@ -948,7 +1084,7 @@ const styles = StyleSheet.create({
     minWidth: 40,
   },
   categoryGroup: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   groupTitle: {
     fontSize: 18,
@@ -1168,6 +1304,31 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
+  emojiInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  emojiPreviewBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiPreviewText: {
+    fontSize: 32,
+  },
+  emojiCustomInput: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 2,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    fontFamily: 'Inter_500Medium',
+  },
   emojiButton: {
     width: 48,
     height: 48,
@@ -1306,6 +1467,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  editTypeToggle: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  editTypeToggleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editTypeToggleText: {
+    fontSize: 18,
   },
   editTypeBadge: {
     flexDirection: 'row',

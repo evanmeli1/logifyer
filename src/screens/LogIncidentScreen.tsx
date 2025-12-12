@@ -194,7 +194,7 @@ export default function LogIncidentScreen({ route }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backIcon}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Log</Text>
+        <Text style={styles.headerTitle}>Log Incident</Text>
         <TouchableOpacity onPress={openMenu} style={styles.menuBtn}>
           <Text style={styles.menuIcon}>⋯</Text>
         </TouchableOpacity>
@@ -222,9 +222,16 @@ export default function LogIncidentScreen({ route }: any) {
       )}
 
       <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        {/* Person Section - STICKY */}
+        {/* Person Section */}
         <View style={styles.stickySectionFirst}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Who's involved?</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Person</Text>
+            {selectedPerson && (
+              <View style={[styles.selectedBadge, { backgroundColor: theme.primary + '15' }]}>
+                <Text style={[styles.selectedBadgeText, { color: theme.primary }]}>{selectedPerson.name}</Text>
+              </View>
+            )}
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.personRow}>
             {people.map((person, index) => {
               const isSelected = selectedPersonId === person.id;
@@ -244,9 +251,9 @@ export default function LogIncidentScreen({ route }: any) {
           </ScrollView>
         </View>
 
-        {/* What Happened - STICKY */}
+        {/* Event Section */}
         <View style={styles.stickySection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>What happened?</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Event</Text>
           <View style={[styles.tabContainer, { backgroundColor: theme.card }]}>
             <Animated.View style={[styles.tabIndicator, { backgroundColor: activeTab === 'negative' ? '#EF4444' : '#10B981', transform: [{ translateX: tabIndicatorTranslate }] }]} />
             <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('negative')} activeOpacity={0.7}>
@@ -273,7 +280,6 @@ export default function LogIncidentScreen({ route }: any) {
                       <Text style={styles.actionEmoji}>{cat.emoji}</Text>
                       <View style={styles.actionContent}>
                         <Text style={[styles.actionName, { color: isSelected ? '#FFF' : theme.text }]} numberOfLines={1}>{cat.name}</Text>
-                        <Text style={[styles.actionSubtext, { color: isSelected ? 'rgba(255,255,255,0.75)' : theme.textMuted }]}>{cat.is_positive ? 'Positive' : 'Negative'} interaction</Text>
                       </View>
                       <View style={[styles.actionPoints, { backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : accentColor + '12' }]}>
                         <Text style={[styles.actionPointsText, { color: isSelected ? '#FFF' : accentColor }]}>{cat.is_positive ? '+' : ''}{cat.default_points}</Text>
@@ -302,7 +308,7 @@ export default function LogIncidentScreen({ route }: any) {
                 <View style={[styles.noteToggle, { backgroundColor: showNote ? theme.primary + '20' : 'transparent', borderColor: showNote ? theme.primary : theme.divider }]}>
                   <Text style={{ fontSize: 18 }}>📝</Text>
                 </View>
-                <Text style={[styles.optionLabel, { color: theme.text }]}>{showNote ? 'Hide Note' : 'Add Note'}</Text>
+                <Text style={[styles.optionLabel, { color: theme.text }]}>{showNote ? 'Hide' : 'Note'}</Text>
               </TouchableOpacity>
               {selectedCategory && (
                 <View style={[styles.totalPoints, { backgroundColor: selectedCategory.is_positive ? '#10B981' : '#EF4444' }]}>
@@ -313,7 +319,7 @@ export default function LogIncidentScreen({ route }: any) {
             </View>
             {showNote && (
               <View style={styles.noteContainer}>
-                <TextInput style={[styles.noteInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.divider }]} placeholder="What happened? Add context..." placeholderTextColor={theme.textMuted} value={note} onChangeText={setNote} multiline numberOfLines={3} />
+                <TextInput style={[styles.noteInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.divider }]} placeholder="Add context..." placeholderTextColor={theme.textMuted} value={note} onChangeText={setNote} multiline numberOfLines={3} />
               </View>
             )}
           </Animated.View>
@@ -324,7 +330,7 @@ export default function LogIncidentScreen({ route }: any) {
       <Animated.View style={[styles.fabContainer, { transform: [{ scale: buttonPulse }] }]}>
         <TouchableOpacity onPress={handleSave} activeOpacity={0.9} disabled={!selectedCategory || !selectedPersonId}>
           <LinearGradient colors={selectedCategory && selectedPersonId ? [theme.primary, theme.primaryLight] : [theme.textMuted, theme.textMuted]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.fab}>
-            <Text style={styles.fabText}>{selectedCategory && selectedPerson ? `Log ${selectedCategory.emoji} → ${selectedPerson.name}` : 'Select person & event'}</Text>
+            <Text style={styles.fabText}>{selectedCategory && selectedPerson ? `Log ${selectedCategory.emoji} for ${selectedPerson.name}` : 'Select person & event'}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -351,7 +357,10 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   stickySection: { paddingHorizontal: 20, marginBottom: 10 },
   stickySectionFirst: { paddingHorizontal: 20, marginBottom: 10, paddingTop: 12 },
-  sectionTitle: { fontSize: 16, fontFamily: 'Inter_700Bold', marginBottom: 8, letterSpacing: -0.3 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  sectionTitle: { fontSize: 13, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.5 },
+  selectedBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  selectedBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
   personRow: { paddingVertical: 4, gap: 10, flexDirection: 'row' },
   personChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingLeft: 8, paddingRight: 14, borderRadius: 50, borderWidth: 1.5, gap: 8 },
   personAvatar: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
@@ -366,15 +375,14 @@ const styles = StyleSheet.create({
   categoryScroll: { flex: 1 },
   categoryScrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 65 },
   actionList: { gap: 10 },
-  actionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1.5 },
-  actionEmoji: { fontSize: 28, marginRight: 14 },
+  actionButton: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1.5 },
+  actionEmoji: { fontSize: 26, marginRight: 12 },
   actionContent: { flex: 1 },
-  actionName: { fontSize: 16, fontFamily: 'Inter_600SemiBold', marginBottom: 2 },
-  actionSubtext: { fontSize: 12, fontFamily: 'Inter_400Regular' },
-  actionPoints: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginLeft: 12 },
-  actionPointsText: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  actionCheck: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
-  actionCheckText: { color: '#FFF', fontSize: 14, fontFamily: 'Inter_700Bold' },
+  actionName: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  actionPoints: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginLeft: 10 },
+  actionPointsText: { fontSize: 14, fontFamily: 'Inter_700Bold' },
+  actionCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  actionCheckText: { color: '#FFF', fontSize: 13, fontFamily: 'Inter_700Bold' },
   optionsPanel: { marginTop: 16, padding: 16, borderRadius: 20 },
   optionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   optionItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },

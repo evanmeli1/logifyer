@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,7 @@ import { getSettings } from '../database/db';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../theme';
 import { checkSubscription } from '../services/purchases';
+import { deleteAllData } from '../database/db';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -17,26 +18,40 @@ export default function SettingsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      const settingsData = getSettings();
-      setSettings(settingsData);
+      let isMounted = true;
+      
+      // Load settings with error handling
+      try {
+        const settingsData = getSettings();
+        if (isMounted) {
+          setSettings(settingsData || null);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        if (isMounted) {
+          setSettings(null); // Ensure we have null on error, not undefined
+        }
+      }
       
       // Check premium status
       const checkPremium = async () => {
         try {
           const premium = await checkSubscription();
-          setIsPremium(premium);
+          if (isMounted) {
+            setIsPremium(premium);
+          }
         } catch (error) {
-          console.log('Error checking subscription:', error);
+          console.error('Error checking subscription:', error);
+          if (isMounted) {
+            setIsPremium(false); // Safe default on error
+          }
         }
       };
       checkPremium();
-    }, [])
-  );
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const settingsData = getSettings();
-      setSettings(settingsData);
+      return () => {
+        isMounted = false;
+      };
     }, [])
   );
 
@@ -59,12 +74,66 @@ export default function SettingsScreen() {
           text: 'Delete Everything',
           style: 'destructive',
           onPress: () => {
-            Alert.alert('Coming soon', 'Delete functionality will be added');
+            if (Platform.OS === 'ios') {
+              // iOS - Use Alert.prompt for typed confirmation
+              Alert.prompt(
+                'Confirm Delete',
+                'Type DELETE to confirm',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: (text?: string) => {
+                      if (text === 'DELETE') {
+                        try {
+                          deleteAllData();
+                          Alert.alert('Success', 'All data has been deleted');
+                        } catch (error) {
+                          console.error('Error deleting data:', error);
+                          Alert.alert('Error', 'Failed to delete data. Please try again.');
+                        }
+                      } else {
+                        Alert.alert('Error', 'You must type DELETE to confirm');
+                      }
+                    },
+                  },
+                ],
+                'plain-text'
+              );
+            } else {
+              // Android - Final confirmation without text input
+              Alert.alert(
+                'Are You Absolutely Sure?',
+                'All your people, incidents, and custom categories will be permanently deleted. This action cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Yes, Delete Everything',
+                    style: 'destructive',
+                    onPress: () => {
+                      try {
+                        deleteAllData();
+                        Alert.alert('Success', 'All data has been deleted');
+                      } catch (error) {
+                        console.error('Error deleting data:', error);
+                        Alert.alert('Error', 'Failed to delete data. Please try again.');
+                      }
+                    },
+                  },
+                ]
+              );
+            }
           },
         },
       ]
     );
   };
+
+  // Safe defaults for settings values
+  const majorMultiplier = settings?.major_multiplier ?? 3;
+  const timeDecayMonths = settings?.time_decay_months ?? 6;
+  const recencyBoostEnabled = settings?.recency_boost_enabled ?? false;
 
   return (
     <View style={[styles.wrapper, { backgroundColor: theme.background }]}>
@@ -91,7 +160,13 @@ export default function SettingsScreen() {
               <View style={[styles.settingRow, { borderBottomColor: theme.divider }]}>
                 <View style={styles.settingInfo}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>Email</Text>
-                  <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>{user.email}</Text>
+                  <Text 
+                    style={[styles.settingSubtitle, { color: theme.textMuted }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {user.email}
+                  </Text>
                 </View>
               </View>
               <TouchableOpacity 
@@ -167,9 +242,9 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingInfo}>
               <Text style={[styles.settingTitle, { color: theme.text }]}>Major Incident Multiplier</Text>
-              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Currently {settings?.major_multiplier || 3}x</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Currently {majorMultiplier}x</Text>
             </View>
-            <Text style={[styles.settingValue, { color: theme.textMuted }]}>{settings?.major_multiplier || 3}x</Text>
+            <Text style={[styles.settingValue, { color: theme.textMuted }]}>{majorMultiplier}x</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -181,7 +256,7 @@ export default function SettingsScreen() {
               <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Old incidents count less</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.textMuted }]}>
-              {settings?.time_decay_months === 0 ? 'Off' : `${settings?.time_decay_months || 6} months`}
+              {timeDecayMonths === 0 ? 'Off' : `${timeDecayMonths} months`}
             </Text>
           </TouchableOpacity>
 
@@ -194,7 +269,7 @@ export default function SettingsScreen() {
               <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Recent incidents count 1.5x</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.textMuted }]}>
-              {settings?.recency_boost_enabled ? 'On' : 'Off'}
+              {recencyBoostEnabled ? 'On' : 'Off'}
             </Text>
           </TouchableOpacity>
         </View>

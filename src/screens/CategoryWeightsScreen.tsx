@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,6 +6,70 @@ import { getAllCategories, updateCategoryWeight } from '../database/db';
 import { Category } from '../types';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
+
+// Memoized component - prevents re-render unless props change
+const CategoryItem = React.memo(({ 
+  cat, 
+  isPositive, 
+  value, 
+  onUpdate, 
+  theme 
+}: { 
+  cat: Category; 
+  isPositive: boolean; 
+  value: number;
+  onUpdate: (id: number, val: number) => void;
+  theme: any;
+}) => {
+  const color = isPositive ? '#10B981' : '#EF4444';
+  
+  return (
+    <View style={[styles.categoryCard, { backgroundColor: theme.card }]}>
+      <View style={styles.categoryHeader}>
+        <View style={[styles.emojiContainer, { backgroundColor: color + '12' }]}>
+          <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+        </View>
+        <View style={styles.categoryInfo}>
+          <Text style={[styles.categoryName, { color: theme.text }]} numberOfLines={1}>
+            {cat.name}
+          </Text>
+          {cat.is_custom === 1 && (
+            <View style={[styles.customBadge, { backgroundColor: theme.primary + '15' }]}>
+              <Text style={[styles.customBadgeText, { color: theme.primary }]}>Custom</Text>
+            </View>
+          )}
+        </View>
+        <View style={[styles.valueContainer, { backgroundColor: color + '12' }]}>
+          <Text style={[styles.categoryValue, { color }]}>
+            {isPositive ? '+' : ''}{value}
+          </Text>
+        </View>
+      </View>
+      
+      <View style={styles.sliderContainer}>
+        <Slider
+          style={styles.slider}
+          minimumValue={isPositive ? 1 : -20}
+          maximumValue={isPositive ? 20 : -1}
+          step={1}
+          value={value}
+          onSlidingComplete={(val) => onUpdate(cat.id, val)}
+          minimumTrackTintColor={color}
+          maximumTrackTintColor={theme.divider}
+          thumbTintColor={color}
+        />
+        <View style={styles.sliderLabels}>
+          <Text style={[styles.sliderLabel, { color: theme.textMuted }]}>
+            {isPositive ? 'Low' : 'Severe'}
+          </Text>
+          <Text style={[styles.sliderLabel, { color: theme.textMuted }]}>
+            {isPositive ? 'High' : 'Minor'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+});
 
 export default function CategoryWeightsScreen() {
   const navigation = useNavigation();
@@ -25,10 +89,10 @@ export default function CategoryWeightsScreen() {
     setWeights(initialWeights);
   }, []);
 
-  const updateWeight = (categoryId: number, value: number) => {
+  const updateWeight = useCallback((categoryId: number, value: number) => {
     setWeights(prev => ({ ...prev, [categoryId]: Math.round(value) }));
     setHasChanges(true);
-  };
+  }, []);
 
   const resetToDefaults = () => {
     Alert.alert(
@@ -81,58 +145,6 @@ export default function CategoryWeightsScreen() {
   const negativeCategories = categories.filter(c => c.is_positive === 0);
   const positiveCategories = categories.filter(c => c.is_positive === 1);
 
-  const CategoryItem = ({ cat, isPositive }: { cat: Category; isPositive: boolean }) => {
-    const value = weights[cat.id] || cat.default_points;
-    const color = isPositive ? '#10B981' : '#EF4444';
-    
-    return (
-      <View style={[styles.categoryCard, { backgroundColor: theme.card }]}>
-        <View style={styles.categoryHeader}>
-          <View style={[styles.emojiContainer, { backgroundColor: color + '12' }]}>
-            <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-          </View>
-          <View style={styles.categoryInfo}>
-            <Text style={[styles.categoryName, { color: theme.text }]} numberOfLines={1}>
-              {cat.name}
-            </Text>
-            {cat.is_custom === 1 && (
-              <View style={[styles.customBadge, { backgroundColor: theme.primary + '15' }]}>
-                <Text style={[styles.customBadgeText, { color: theme.primary }]}>Custom</Text>
-              </View>
-            )}
-          </View>
-          <View style={[styles.valueContainer, { backgroundColor: color + '12' }]}>
-            <Text style={[styles.categoryValue, { color }]}>
-              {isPositive ? '+' : ''}{value}
-            </Text>
-          </View>
-        </View>
-        
-        <View style={styles.sliderContainer}>
-          <Slider
-            style={styles.slider}
-            minimumValue={isPositive ? 1 : -20}
-            maximumValue={isPositive ? 20 : -1}
-            step={1}
-            value={value}
-            onValueChange={(val) => updateWeight(cat.id, val)}
-            minimumTrackTintColor={color}
-            maximumTrackTintColor={theme.divider}
-            thumbTintColor={color}
-          />
-          <View style={styles.sliderLabels}>
-            <Text style={[styles.sliderLabel, { color: theme.textMuted }]}>
-              {isPositive ? 'Low' : 'Severe'}
-            </Text>
-            <Text style={[styles.sliderLabel, { color: theme.textMuted }]}>
-              {isPositive ? 'High' : 'Minor'}
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header - matching other screens */}
@@ -181,7 +193,14 @@ export default function CategoryWeightsScreen() {
           </View>
           
           {negativeCategories.map(cat => (
-            <CategoryItem key={cat.id} cat={cat} isPositive={false} />
+            <CategoryItem 
+              key={cat.id} 
+              cat={cat} 
+              isPositive={false}
+              value={weights[cat.id] || cat.default_points}
+              onUpdate={updateWeight}
+              theme={theme}
+            />
           ))}
         </View>
 
@@ -196,7 +215,14 @@ export default function CategoryWeightsScreen() {
           </View>
           
           {positiveCategories.map(cat => (
-            <CategoryItem key={cat.id} cat={cat} isPositive={true} />
+            <CategoryItem 
+              key={cat.id} 
+              cat={cat} 
+              isPositive={true}
+              value={weights[cat.id] || cat.default_points}
+              onUpdate={updateWeight}
+              theme={theme}
+            />
           ))}
         </View>
       </ScrollView>
@@ -204,10 +230,10 @@ export default function CategoryWeightsScreen() {
       {/* Footer */}
       <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.divider }]}>
         <TouchableOpacity 
-          style={[styles.resetButton, { backgroundColor: theme.backgroundSecondary }]} 
+          style={[styles.resetButton, { borderColor: theme.divider }]} 
           onPress={resetToDefaults}
         >
-          <Text style={[styles.resetButtonText, { color: theme.textMuted }]}>🔄 Reset</Text>
+          <Text style={[styles.resetButtonText, { color: theme.textMuted }]}>Reset</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -221,7 +247,7 @@ export default function CategoryWeightsScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.saveGradient}
           >
-            <Text style={styles.saveButtonText}>Save Changes</Text>
+            <Text style={styles.saveButtonText}>Save</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -237,7 +263,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 20,
+    paddingTop: 30,
     paddingBottom: 24,
     paddingHorizontal: 20,
   },
@@ -413,23 +439,25 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   resetButton: {
+    flex: 1,
     paddingVertical: 16,
-    paddingHorizontal: 20,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
   },
   resetButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
   saveButton: {
-    flex: 1,
+    flex: 2,
     borderRadius: 14,
     overflow: 'hidden',
+    
   },
   saveGradient: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     alignItems: 'center',
   },
   saveButtonText: {
