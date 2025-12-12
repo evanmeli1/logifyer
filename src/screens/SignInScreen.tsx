@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import Animated, { 
   FadeInDown, 
@@ -9,6 +9,7 @@ import Animated, {
   withDelay,
   Easing,
   interpolate,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,7 +18,7 @@ import { useTheme } from '../theme';
 
 const { width, height } = Dimensions.get('window');
 
-const FloatingShape = ({ 
+const FloatingShape = memo(({ 
   size, 
   initialX, 
   initialY, 
@@ -43,7 +44,12 @@ const FloatingShape = ({
         true
       )
     );
-  }, []);
+
+    // Cleanup animation on unmount
+    return () => {
+      cancelAnimation(progress);
+    };
+  }, [delay, duration]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const translateY = interpolate(progress.value, [0, 1], [0, -30]);
@@ -77,36 +83,105 @@ const FloatingShape = ({
       ]}
     />
   );
-};
+});
+
+FloatingShape.displayName = 'FloatingShape';
 
 export default function SignInScreen() {
   const { signInWithGoogle, signInWithApple } = useAuth();
   const navigation = useNavigation();
   const { theme } = useTheme();
   const [loading, setLoading] = useState<'google' | 'apple' | null>(null);
+  const isMountedRef = useRef(true);
+  const isProcessingRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const safeNavigateBack = () => {
+    if (isMountedRef.current) {
+      // Check if we can go back, otherwise navigate to home
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        (navigation as any).navigate('Home');
+      }
+    }
+  };
 
   const handleGoogleSignIn = async () => {
+    // Prevent multiple simultaneous calls
+    if (isProcessingRef.current) return;
+    
+    isProcessingRef.current = true;
     setLoading('google');
+    
     try {
       await signInWithGoogle();
-      navigation.goBack();
+      safeNavigateBack();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      console.error('Google sign in error:', error);
+      
+      // Don't show error if user cancelled
+      if (isMountedRef.current) {
+        if (error.code === 'ERR_REQUEST_CANCELED' || 
+            error.message?.includes('cancel') ||
+            error.message?.includes('cancelled')) {
+          // User cancelled, just clear loading
+          console.log('User cancelled Google sign in');
+        } else {
+          // Actual error
+          Alert.alert('Sign In Failed', error.message || 'Failed to sign in with Google');
+        }
+      }
     } finally {
-      setLoading(null);
+      isProcessingRef.current = false;
+      if (isMountedRef.current) {
+        setLoading(null);
+      }
     }
   };
 
   const handleAppleSignIn = async () => {
+    // Prevent multiple simultaneous calls
+    if (isProcessingRef.current) return;
+    
+    isProcessingRef.current = true;
     setLoading('apple');
+    
     try {
       await signInWithApple();
-      navigation.goBack();
+      safeNavigateBack();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      console.error('Apple sign in error:', error);
+      
+      // Don't show error if user cancelled
+      if (isMountedRef.current) {
+        if (error.code === '1001' || // Apple Sign In cancelled code
+            error.code === 'ERR_REQUEST_CANCELED' ||
+            error.message?.includes('cancel') ||
+            error.message?.includes('cancelled')) {
+          // User cancelled, just clear loading
+          console.log('User cancelled Apple sign in');
+        } else {
+          // Actual error
+          Alert.alert('Sign In Failed', error.message || 'Failed to sign in with Apple');
+        }
+      }
     } finally {
-      setLoading(null);
+      isProcessingRef.current = false;
+      if (isMountedRef.current) {
+        setLoading(null);
+      }
     }
+  };
+
+  const handleSkip = () => {
+    safeNavigateBack();
   };
 
   return (
@@ -170,9 +245,10 @@ export default function SignInScreen() {
       {/* Back Button */}
       <TouchableOpacity 
         style={styles.backButton}
-        onPress={() => navigation.goBack()}
+        onPress={handleSkip}
+        disabled={loading !== null}
       >
-        <Text style={[styles.backArrow, { color: theme.text }]}>←</Text>
+        <Text style={[styles.backArrow, { color: theme.text, opacity: loading !== null ? 0.5 : 1 }]}>←</Text>
       </TouchableOpacity>
 
       {/* Content */}
@@ -192,7 +268,7 @@ export default function SignInScreen() {
           style={styles.buttonSection}
         >
           <TouchableOpacity 
-            style={styles.appleButton}
+            style={[styles.appleButton, { opacity: loading !== null && loading !== 'apple' ? 0.5 : 1 }]}
             onPress={handleAppleSignIn}
             disabled={loading !== null}
             activeOpacity={0.8}
@@ -208,7 +284,10 @@ export default function SignInScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.googleButton, { borderColor: theme.divider }]}
+            style={[
+              styles.googleButton, 
+              { borderColor: theme.divider, opacity: loading !== null && loading !== 'google' ? 0.5 : 1 }
+            ]}
             onPress={handleGoogleSignIn}
             disabled={loading !== null}
             activeOpacity={0.8}
@@ -233,8 +312,9 @@ export default function SignInScreen() {
         style={styles.bottomSection}
       >
         <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={() => navigation.goBack()}
+          style={[styles.primaryButton, { opacity: loading !== null ? 0.5 : 1 }]}
+          onPress={handleSkip}
+          disabled={loading !== null}
           activeOpacity={0.8}
         >
           <LinearGradient

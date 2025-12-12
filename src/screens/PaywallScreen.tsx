@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Dimensions, ScrollView } from 'react-native';
 import Animated, { 
   FadeInDown, 
@@ -114,25 +114,77 @@ export default function PaywallScreen({ navigation }: any) {
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     loadOfferings();
+    checkExistingSubscription();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
+
+  const checkExistingSubscription = async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      if (customerInfo.entitlements.active['premium']) {
+        if (mountedRef.current) {
+          Alert.alert(
+            'Already Premium! 🎉',
+            'You already have an active subscription.',
+            [{ text: 'Got it', onPress: () => navigation.goBack() }]
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      // Don't show error to user - they might just not have a subscription
+    }
+  };
 
   const loadOfferings = async () => {
     try {
       const offerings = await Purchases.getOfferings();
-      if (offerings.current?.availablePackages) {
-        setPackages(offerings.current.availablePackages);
+      if (offerings.current?.availablePackages && offerings.current.availablePackages.length > 0) {
+        if (mountedRef.current) {
+          setPackages(offerings.current.availablePackages);
+        }
+      } else {
+        if (mountedRef.current) {
+          setPackages([]);
+          Alert.alert(
+            'No Plans Available',
+            'Could not load subscription plans. Please try again later.',
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        }
       }
     } catch (error) {
       console.error('Error loading offerings:', error);
+      if (mountedRef.current) {
+        Alert.alert(
+          'Connection Error',
+          'Could not load subscription plans. Check your internet connection.',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => navigation.goBack() },
+            { text: 'Retry', onPress: () => loadOfferings() }
+          ]
+        );
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   const handlePurchase = async () => {
+    // Guard against multiple simultaneous purchases
+    if (purchasing) return;
+
+    // Check if user is authenticated
     if (!user) {
       Alert.alert(
         'Account Required',
@@ -145,46 +197,192 @@ export default function PaywallScreen({ navigation }: any) {
       return;
     }
 
+    // Validate packages exist
     if (packages.length === 0) {
-      Alert.alert('Error', 'No subscription plan available');
+      Alert.alert('Error', 'No subscription plan available. Please try again later.');
       return;
     }
 
     const pkg = packages[0];
 
+    // Validate package integrity
+    if (!pkg?.product?.priceString || !pkg?.identifier) {
+      Alert.alert(
+        'Invalid Plan',
+        'The subscription plan is invalid. Please restart the app and try again.'
+      );
+      return;
+    }
+
     setPurchasing(true);
+
     try {
+      // Verify RevenueCat user ID is properly set
+      const customerId = await Purchases.getAppUserID();
+      if (!customerId || customerId.startsWith('$RCAnonymousID:')) {
+        if (mountedRef.current) {
+          setPurchasing(false);
+          Alert.alert(
+            'Account Setup Error',
+            'Your account isn\'t properly configured. Please sign out and sign back in.',
+            [{ text: 'OK', onPress: () => navigation.navigate('Settings') }]
+          );
+        }
+        return;
+      }
+
+      // Attempt purchase
       const { customerInfo } = await Purchases.purchasePackage(pkg);
+
+      if (!mountedRef.current) return;
+
+      // Validate purchase response
+      if (!customerInfo) {
+        setPurchasing(false);
+        Alert.alert(
+          'Purchase Error',
+          'We received an invalid response. Please contact support if you were charged.'
+        );
+        return;
+      }
+
+      // Check if premium entitlement is active
       if (customerInfo.entitlements.active['premium']) {
-        Alert.alert('Welcome to Premium! 🎉', 'You now have access to all premium features.', [
-          { text: 'Let\'s Go!', onPress: () => navigation.goBack() }
-        ]);
+        Alert.alert(
+          'Welcome to Premium! 🎉', 
+          'You now have access to all premium features.',
+          [{ text: 'Let\'s Go!', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        // Purchase went through but entitlement didn't activate immediately
+        Alert.alert(
+          'Processing Purchase',
+          'Your purchase is being processed. Premium features will be available shortly. Please restart the app in a few minutes if they don\'t appear.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
       }
     } catch (error: any) {
+      if (!mountedRef.current) return;
+
+      console.error('Purchase error:', error);
+
       if (!error.userCancelled) {
-        Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+        // Check for specific error types
+        const errorMessage = error.message?.toLowerCase() || '';
+        const errorCode = error.code?.toLowerCase() || '';
+
+        if (errorMessage.includes('network') || 
+            errorCode.includes('network') || 
+            errorCode === 'network_error') {
+          Alert.alert(
+            'Connection Lost',
+            'Your internet connection was interrupted. Your purchase was not completed. Please check your connection and try again.'
+          );
+        } else if (errorCode === 'payment_pending') {
+          Alert.alert(
+            'Payment Pending',
+            'Your payment is being processed. Premium features will be available once the payment completes.'
+          );
+        } else if (errorCode === 'product_already_purchased') {
+          Alert.alert(
+            'Already Subscribed',
+            'You already have an active subscription. Try restoring your purchases.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Restore', onPress: restorePurchases }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Purchase Failed',
+            'Something went wrong with your purchase. Please try again or contact support if the problem persists.'
+          );
+        }
       }
     } finally {
-      setPurchasing(false);
+      if (mountedRef.current) {
+        setPurchasing(false);
+      }
     }
   };
 
   const restorePurchases = async () => {
+    // Guard against multiple simultaneous restores
+    if (purchasing) return;
+
     setPurchasing(true);
     try {
       const customerInfo = await Purchases.restorePurchases();
+
+      if (!mountedRef.current) return;
+
       if (customerInfo.entitlements.active['premium']) {
-        Alert.alert('Welcome Back! 🎉', 'Your premium subscription has been restored.', [
-          { text: 'Let\'s Go!', onPress: () => navigation.goBack() }
-        ]);
+        Alert.alert(
+          'Welcome Back! 🎉', 
+          'Your premium subscription has been restored.',
+          [{ text: 'Let\'s Go!', onPress: () => navigation.goBack() }]
+        );
       } else {
-        Alert.alert('No Subscription Found', 'We couldn\'t find an active subscription for your account.');
+        Alert.alert(
+          'No Subscription Found',
+          'We couldn\'t find an active subscription for your account. If you recently purchased, please wait a few minutes and try again.'
+        );
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to restore purchases. Please try again.');
+    } catch (error: any) {
+      if (!mountedRef.current) return;
+
+      console.error('Restore error:', error);
+
+      const errorMessage = error.message?.toLowerCase() || '';
+      if (errorMessage.includes('network')) {
+        Alert.alert(
+          'Connection Error',
+          'Could not restore purchases. Check your internet connection and try again.'
+        );
+      } else {
+        Alert.alert(
+          'Restore Failed',
+          'Failed to restore purchases. Please try again or contact support if the problem persists.'
+        );
+      }
     } finally {
-      setPurchasing(false);
+      if (mountedRef.current) {
+        setPurchasing(false);
+      }
     }
+  };
+
+  const navigateToLegal = (tab: 'terms' | 'privacy') => {
+    try {
+      navigation.navigate('Legal', { tab });
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert(
+        'Error',
+        `Could not open ${tab === 'terms' ? 'Terms of Service' : 'Privacy Policy'}. Please contact support.`
+      );
+    }
+  };
+
+  const getPriceDisplay = (): string => {
+    if (packages.length === 0 || !packages[0]?.product) {
+      return 'Loading...';
+    }
+
+    const product = packages[0].product;
+    let display = '';
+
+    // Add intro price info if available
+    if (product.introPrice) {
+      const period = product.introPrice.periodNumberOfUnits || 1;
+      const unit = product.introPrice.periodUnit || 'week';
+      display += `Start ${period} ${unit}${period > 1 ? 's' : ''} Free Trial • `;
+    }
+
+    // Add regular price
+    display += `${product.priceString}/mo`;
+
+    return display;
   };
 
   if (loading) {
@@ -237,8 +435,12 @@ export default function PaywallScreen({ navigation }: any) {
             <Text style={styles.headerSubtitle}>Get the full experience</Text>
           </View>
           <TouchableOpacity 
-            style={styles.closeButton}
+            style={[
+              styles.closeButton,
+              purchasing && styles.closeButtonDisabled
+            ]}
             onPress={() => navigation.goBack()}
+            disabled={purchasing}
           >
             <Text style={styles.closeText}>✕</Text>
           </TouchableOpacity>
@@ -249,6 +451,7 @@ export default function PaywallScreen({ navigation }: any) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!purchasing}
       >
         {/* Features Section */}
         <Animated.View 
@@ -316,22 +519,28 @@ export default function PaywallScreen({ navigation }: any) {
             {purchasing ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.purchaseText}>Start 1 Week Free Trial • $1.99/mo</Text>
+              <Text style={styles.purchaseText}>{getPriceDisplay()}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
         <View style={styles.bottomLinks}>
           <TouchableOpacity onPress={restorePurchases} disabled={purchasing}>
-            <Text style={[styles.linkText, { color: theme.textMuted }]}>Restore</Text>
+            <Text style={[styles.linkText, { color: theme.textMuted, opacity: purchasing ? 0.5 : 1 }]}>
+              Restore
+            </Text>
           </TouchableOpacity>
           <Text style={[styles.linkDivider, { color: theme.divider }]}>•</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Legal', { tab: 'terms' })}>
-            <Text style={[styles.linkText, { color: theme.textMuted }]}>Terms</Text>
+          <TouchableOpacity onPress={() => navigateToLegal('terms')} disabled={purchasing}>
+            <Text style={[styles.linkText, { color: theme.textMuted, opacity: purchasing ? 0.5 : 1 }]}>
+              Terms
+            </Text>
           </TouchableOpacity>
           <Text style={[styles.linkDivider, { color: theme.divider }]}>•</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Legal', { tab: 'privacy' })}>
-            <Text style={[styles.linkText, { color: theme.textMuted }]}>Privacy</Text>
+          <TouchableOpacity onPress={() => navigateToLegal('privacy')} disabled={purchasing}>
+            <Text style={[styles.linkText, { color: theme.textMuted, opacity: purchasing ? 0.5 : 1 }]}>
+              Privacy
+            </Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -383,6 +592,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  closeButtonDisabled: {
+    opacity: 0.4,
   },
   closeText: {
     fontSize: 18,

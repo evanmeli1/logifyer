@@ -1,7 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { supabase } from './supabase';
-
-const db = SQLite.openDatabaseSync('logifyer.db');
+import { getDatabase } from '../database/db';
 
 // Generate UUID v4
 const generateUUID = () => {
@@ -13,6 +12,10 @@ const generateUUID = () => {
 };
 
 export const syncLocalToCloud = async (userId: string) => {
+  if (!userId) {
+    throw new Error('User ID is required for sync');
+  }
+
   try {
     console.log('🔄 Starting local to cloud sync...');
 
@@ -26,8 +29,10 @@ export const syncLocalToCloud = async (userId: string) => {
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
-      return;
+      throw new Error('Failed to create user profile');
     }
+
+    const db = getDatabase();
 
     // Get all local data
     const people = db.getAllSync('SELECT * FROM people');
@@ -62,7 +67,10 @@ export const syncLocalToCloud = async (userId: string) => {
           created_at: person.created_at,
         });
       
-      if (error) console.error('Error syncing person:', error);
+      if (error) {
+        console.error('Error syncing person:', error);
+        throw new Error(`Failed to sync person: ${person.name}`);
+      }
     }
 
     // Sync ALL categories (both default and custom)
@@ -82,7 +90,10 @@ export const syncLocalToCloud = async (userId: string) => {
           is_custom: category.is_custom === 1,
         });
       
-      if (error) console.error('Error syncing category:', error);
+      if (error) {
+        console.error('Error syncing category:', error);
+        throw new Error(`Failed to sync category: ${category.name}`);
+      }
     }
 
     // Sync incidents (with mapped UUIDs)
@@ -92,7 +103,7 @@ export const syncLocalToCloud = async (userId: string) => {
       const mappedCategoryId = categoryIdMap.get(incident.category_id);
 
       if (!mappedPersonId || !mappedCategoryId) {
-        console.log('Skipping incident - missing mapping');
+        console.warn('Skipping incident - missing mapping');
         continue;
       }
 
@@ -109,7 +120,10 @@ export const syncLocalToCloud = async (userId: string) => {
           timestamp: incident.timestamp,
         });
       
-      if (error) console.error('Error syncing incident:', error);
+      if (error) {
+        console.error('Error syncing incident:', error);
+        throw new Error('Failed to sync incident');
+      }
     }
 
     // Sync settings
@@ -123,7 +137,10 @@ export const syncLocalToCloud = async (userId: string) => {
           recency_boost_enabled: (settings as any).recency_boost_enabled === 1,
         });
       
-      if (error) console.error('Error syncing settings:', error);
+      if (error) {
+        console.error('Error syncing settings:', error);
+        throw new Error('Failed to sync settings');
+      }
     }
 
     console.log('✅ Local to cloud sync complete!');
@@ -134,30 +151,51 @@ export const syncLocalToCloud = async (userId: string) => {
 };
 
 export const syncCloudToLocal = async (userId: string) => {
+  if (!userId) {
+    throw new Error('User ID is required for sync');
+  }
+
   try {
     console.log('⬇️ Starting cloud to local sync...');
 
     // Get cloud data
-    const { data: cloudPeople } = await supabase
+    const { data: cloudPeople, error: peopleError } = await supabase
       .from('people')
       .select('*')
       .eq('user_id', userId);
 
-    const { data: cloudCategories } = await supabase
+    if (peopleError) {
+      throw new Error(`Failed to fetch people: ${peopleError.message}`);
+    }
+
+    const { data: cloudCategories, error: categoriesError } = await supabase
       .from('categories')
       .select('*')
       .eq('user_id', userId);
 
-    const { data: cloudIncidents } = await supabase
+    if (categoriesError) {
+      throw new Error(`Failed to fetch categories: ${categoriesError.message}`);
+    }
+
+    const { data: cloudIncidents, error: incidentsError } = await supabase
       .from('incidents')
       .select('*')
       .eq('user_id', userId);
 
-    const { data: cloudSettings } = await supabase
+    if (incidentsError) {
+      throw new Error(`Failed to fetch incidents: ${incidentsError.message}`);
+    }
+
+    const { data: cloudSettings, error: settingsError } = await supabase
       .from('settings')
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    // Settings error is OK if it doesn't exist yet
+    if (settingsError && settingsError.code !== 'PGRST116') {
+      console.warn('Settings fetch error:', settingsError);
+    }
 
     console.log('📥 Cloud data:', {
       people: cloudPeople?.length || 0,
@@ -165,62 +203,67 @@ export const syncCloudToLocal = async (userId: string) => {
       incidents: cloudIncidents?.length || 0,
     });
 
-    // Clear local data first
-    db.runSync('DELETE FROM incidents');
-    db.runSync('DELETE FROM people');
-    db.runSync('DELETE FROM categories WHERE is_custom = 1');
-    db.runSync('DELETE FROM settings WHERE id = 1');
+    const db = getDatabase();
 
-    console.log('🗑️ Local data cleared');
+    // Use transaction for atomic sync
+    db.withTransactionSync(() => {
+      // Clear local data first
+      db.runSync('DELETE FROM incidents');
+      db.runSync('DELETE FROM people');
+      db.runSync('DELETE FROM categories WHERE is_custom = 1');
+      db.runSync('DELETE FROM settings WHERE id = 1');
 
-    // Map cloud UUIDs to local integer IDs
-    const personIdMap = new Map();
-    const categoryIdMap = new Map();
+      console.log('🗑️ Local data cleared');
 
-    // Insert people
-    if (cloudPeople) {
-      for (const person of cloudPeople) {
-        const result = db.runSync(
-          'INSERT INTO people (name, relationship_type, photo_uri, archived, created_at) VALUES (?, ?, ?, ?, ?)',
-          [person.name, person.relationship_type, person.photo_uri, person.archived ? 1 : 0, person.created_at]
-        );
-        personIdMap.set(person.id, result.lastInsertRowId);
-      }
-    }
+      // Map cloud UUIDs to local integer IDs
+      const personIdMap = new Map();
+      const categoryIdMap = new Map();
 
-    // Insert categories
-    if (cloudCategories) {
-      for (const category of cloudCategories) {
-        const result = db.runSync(
-          'INSERT INTO categories (name, emoji, default_points, is_positive, is_custom) VALUES (?, ?, ?, ?, ?)',
-          [category.name, category.emoji, category.default_points, category.is_positive ? 1 : 0, category.is_custom ? 1 : 0]
-        );
-        categoryIdMap.set(category.id, result.lastInsertRowId);
-      }
-    }
-
-    // Insert incidents
-    if (cloudIncidents) {
-      for (const incident of cloudIncidents) {
-        const localPersonId = personIdMap.get(incident.person_id);
-        const localCategoryId = categoryIdMap.get(incident.category_id);
-
-        if (localPersonId && localCategoryId) {
-          db.runSync(
-            'INSERT INTO incidents (person_id, category_id, points, is_major, note, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
-            [localPersonId, localCategoryId, incident.points, incident.is_major ? 1 : 0, incident.note, incident.timestamp]
+      // Insert people
+      if (cloudPeople && cloudPeople.length > 0) {
+        for (const person of cloudPeople) {
+          const result = db.runSync(
+            'INSERT INTO people (name, relationship_type, photo_uri, archived, created_at) VALUES (?, ?, ?, ?, ?)',
+            [person.name, person.relationship_type, person.photo_uri, person.archived ? 1 : 0, person.created_at]
           );
+          personIdMap.set(person.id, result.lastInsertRowId);
         }
       }
-    }
 
-    // Insert settings
-    if (cloudSettings) {
-      db.runSync(
-        'INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, ?, ?, ?)',
-        [cloudSettings.major_multiplier, cloudSettings.time_decay_months, cloudSettings.recency_boost_enabled ? 1 : 0]
-      );
-    }
+      // Insert categories
+      if (cloudCategories && cloudCategories.length > 0) {
+        for (const category of cloudCategories) {
+          const result = db.runSync(
+            'INSERT INTO categories (name, emoji, default_points, is_positive, is_custom) VALUES (?, ?, ?, ?, ?)',
+            [category.name, category.emoji, category.default_points, category.is_positive ? 1 : 0, category.is_custom ? 1 : 0]
+          );
+          categoryIdMap.set(category.id, result.lastInsertRowId);
+        }
+      }
+
+      // Insert incidents
+      if (cloudIncidents && cloudIncidents.length > 0) {
+        for (const incident of cloudIncidents) {
+          const localPersonId = personIdMap.get(incident.person_id);
+          const localCategoryId = categoryIdMap.get(incident.category_id);
+
+          if (localPersonId && localCategoryId) {
+            db.runSync(
+              'INSERT INTO incidents (person_id, category_id, points, is_major, note, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
+              [localPersonId, localCategoryId, incident.points, incident.is_major ? 1 : 0, incident.note, incident.timestamp]
+            );
+          }
+        }
+      }
+
+      // Insert settings
+      if (cloudSettings) {
+        db.runSync(
+          'INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, ?, ?, ?)',
+          [cloudSettings.major_multiplier, cloudSettings.time_decay_months, cloudSettings.recency_boost_enabled ? 1 : 0]
+        );
+      }
+    });
 
     console.log('✅ Cloud to local sync complete!');
   } catch (error) {
@@ -232,10 +275,16 @@ export const syncCloudToLocal = async (userId: string) => {
 export const clearLocalData = () => {
   try {
     console.log('🗑️ Clearing all local data...');
-    db.runSync('DELETE FROM incidents');
-    db.runSync('DELETE FROM people');
-    db.runSync('DELETE FROM categories WHERE is_custom = 1');
-    db.runSync('DELETE FROM settings WHERE id = 1');
+    
+    const db = getDatabase();
+    
+    db.withTransactionSync(() => {
+      db.runSync('DELETE FROM incidents');
+      db.runSync('DELETE FROM people');
+      db.runSync('DELETE FROM categories WHERE is_custom = 1');
+      db.runSync('DELETE FROM settings WHERE id = 1');
+    });
+    
     console.log('✅ Local data cleared');
   } catch (error) {
     console.error('❌ Error clearing local data:', error);

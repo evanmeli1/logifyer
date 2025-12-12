@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Alert } from 'react-native';
 import { initDatabase, seedCategories, initSettings, initRelationshipTypes } from './src/database/db';
 import HomeScreen from './src/screens/HomeScreen';
 import AddPersonScreen from './src/screens/AddPersonScreen';
@@ -13,15 +13,13 @@ import CategoryWeightsScreen from './src/screens/CategoryWeightsScreen';
 import GlobalSettingsScreen from './src/screens/GlobalSettingsScreen';
 import ManageCategoriesScreen from './src/screens/ManageCategoriesScreen';
 import StatsScreen from './src/screens/StatsScreen';
-import { supabase } from './src/services/supabase';
-import { AuthProvider } from './src/contexts/AuthContext';
 import SignInScreen from './src/screens/SignInScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
+import LegalScreen from './src/screens/LegalScreen';
+import { AuthProvider } from './src/contexts/AuthContext';
 import { initializePurchases } from './src/services/purchases';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import LegalScreen from './src/screens/LegalScreen';
-
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -222,6 +220,7 @@ function AppContent() {
 
 export default function App() {
   const [dbInitialized, setDbInitialized] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -231,43 +230,54 @@ export default function App() {
   });
 
   useEffect(() => {
-    const testSupabase = async () => {
+    const initializeApp = async () => {
       try {
+        // Initialize database
         initDatabase();
         initSettings();
         seedCategories();
         initRelationshipTypes();
+        console.log('✅ Database initialized');
         
+        // Initialize RevenueCat (non-blocking)
         try {
           await initializePurchases();
+          console.log('✅ RevenueCat initialized');
         } catch (error) {
-          console.log('⚠️ RevenueCat failed:', error);
-        }
-        
-        console.log('Database ready ✅');
-        
-        const { data, error } = await supabase.from('profiles').select('count');
-        if (error) {
-          console.log('⚠️ Supabase connection issue:', error.message);
-        } else {
-          console.log('✅ Supabase connected!');
+          console.log('⚠️ RevenueCat initialization failed:', error);
+          // Don't block app launch if RevenueCat fails
         }
         
         setDbInitialized(true);
       } catch (error) {
-        console.error('Database error:', error);
-        setDbInitialized(true);
+        console.error('❌ App initialization error:', error);
+        setInitError('Failed to initialize app. Please restart.');
+        setDbInitialized(true); // Allow UI to show error
       }
     };
     
-    testSupabase();
+    initializeApp();
   }, []);
 
   if (!dbInitialized || !fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text>Loading...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
+        <ActivityIndicator size="large" color="#F43F5E" />
+        <Text style={{ marginTop: 12, fontSize: 15, color: '#6B7280' }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (initError) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#F9FAFB' }}>
+        <Text style={{ fontSize: 40, marginBottom: 16 }}>⚠️</Text>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
+          Initialization Error
+        </Text>
+        <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
+          {initError}
+        </Text>
       </View>
     );
   }

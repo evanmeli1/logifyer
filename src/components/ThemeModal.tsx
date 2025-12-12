@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Switch,
   Pressable,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, themeColors, ThemeColor } from '../theme';
@@ -26,39 +27,122 @@ const freeThemes: ThemeColor[] = ['rose', 'ocean'];
 export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalProps) {
   const { theme, themeColor, themeMode, isPremium, setThemeColor, toggleDarkMode } = useTheme();
 
+  // Validate theme context is available
+  if (!theme || !setThemeColor || !toggleDarkMode) {
+    console.error('ThemeModal: Theme context is not properly initialized');
+    return null;
+  }
+
   const colorOptions = Object.entries(themeColors) as [ThemeColor, typeof themeColors[ThemeColor]][];
 
-  const handleColorSelect = (color: ThemeColor) => {
-    const colorData = themeColors[color];
-    if (colorData.premium && !isPremium) {
-      onUpgrade();
-      return;
+  // Memoize color selection to prevent unnecessary re-renders
+  const handleColorSelect = useCallback((color: ThemeColor) => {
+    try {
+      const colorData = themeColors[color];
+      
+      // Validate color exists in themeColors
+      if (!colorData) {
+        console.error(`ThemeModal: Invalid color selection: ${color}`);
+        return;
+      }
+
+      // Check if premium is required
+      if (colorData.premium && !isPremium) {
+        onUpgrade();
+        return;
+      }
+
+      // Update theme color
+      setThemeColor(color);
+    } catch (error) {
+      console.error('ThemeModal: Error selecting color:', error);
+      Alert.alert(
+        'Theme Error',
+        'Could not change theme. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
-    setThemeColor(color);
-  };
+  }, [isPremium, setThemeColor, onUpgrade]);
+
+  // Memoize dark mode toggle to prevent unnecessary re-renders
+  const handleDarkModeToggle = useCallback((value: boolean) => {
+    try {
+      toggleDarkMode();
+    } catch (error) {
+      console.error('ThemeModal: Error toggling dark mode:', error);
+      Alert.alert(
+        'Theme Error',
+        'Could not toggle dark mode. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [toggleDarkMode]);
+
+  // Safe close handler with error boundary
+  const handleClose = useCallback(() => {
+    try {
+      onClose();
+    } catch (error) {
+      console.error('ThemeModal: Error closing modal:', error);
+    }
+  }, [onClose]);
+
+  // Safe upgrade handler
+  const handleUpgrade = useCallback(() => {
+    try {
+      onUpgrade();
+    } catch (error) {
+      console.error('ThemeModal: Error navigating to upgrade:', error);
+      Alert.alert(
+        'Navigation Error',
+        'Could not open upgrade screen. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [onUpgrade]);
+
+  // Validate colorOptions has data
+  if (!colorOptions || colorOptions.length === 0) {
+    console.error('ThemeModal: No color options available');
+    return null;
+  }
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
+      statusBarTranslucent
     >
       <AnimatedPressable 
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(200)}
         style={styles.overlay} 
-        onPress={onClose}
+        onPress={handleClose}
+        accessible={true}
+        accessibilityLabel="Close theme modal"
+        accessibilityRole="button"
       >
         <Animated.View 
           entering={SlideInDown.springify().damping(18).stiffness(120)}
           style={[styles.container, { backgroundColor: theme.card }]}
         >
-          <Pressable onPress={(e) => e.stopPropagation()}>
+          <Pressable 
+            onPress={(e) => e.stopPropagation()}
+            accessible={false}
+          >
             {/* Header */}
             <View style={styles.header}>
               <Text style={[styles.title, { color: theme.text }]}>Personalize Theme</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <TouchableOpacity 
+                onPress={handleClose} 
+                style={styles.closeButton}
+                accessible={true}
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 <Text style={[styles.closeText, { color: theme.textMuted }]}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -76,9 +160,12 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
               </View>
               <Switch
                 value={themeMode === 'dark'}
-                onValueChange={toggleDarkMode}
+                onValueChange={handleDarkModeToggle}
                 trackColor={{ false: '#E5E7EB', true: theme.primary + '60' }}
                 thumbColor={themeMode === 'dark' ? theme.primary : '#FFFFFF'}
+                accessible={true}
+                accessibilityLabel={`Dark mode is ${themeMode === 'dark' ? 'on' : 'off'}`}
+                accessibilityRole="switch"
               />
             </View>
 
@@ -87,6 +174,12 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
             
             <View style={styles.colorsGrid}>
               {colorOptions.map(([key, data]) => {
+                // Safety checks for data integrity
+                if (!data || !data.name || !data.primary || !data.primaryLight) {
+                  console.warn(`ThemeModal: Invalid theme data for ${key}`);
+                  return null;
+                }
+
                 const isSelected = themeColor === key;
                 const isLocked = data.premium && !isPremium;
                 const isFree = freeThemes.includes(key);
@@ -97,6 +190,10 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
                     style={styles.colorOption}
                     onPress={() => handleColorSelect(key)}
                     activeOpacity={0.7}
+                    accessible={true}
+                    accessibilityLabel={`${data.name} theme${isLocked ? ', premium required' : ''}${isSelected ? ', selected' : ''}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected, disabled: isLocked }}
                   >
                     <View style={[
                       styles.colorCircleOuter,
@@ -136,7 +233,13 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
 
             {/* Upgrade CTA for non-premium */}
             {!isPremium && (
-              <TouchableOpacity onPress={onUpgrade} activeOpacity={0.8}>
+              <TouchableOpacity 
+                onPress={handleUpgrade} 
+                activeOpacity={0.8}
+                accessible={true}
+                accessibilityLabel="Unlock all premium themes"
+                accessibilityRole="button"
+              >
                 <LinearGradient
                   colors={[theme.primary, theme.primaryLight]}
                   start={{ x: 0, y: 0 }}
@@ -166,6 +269,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 40,
     paddingHorizontal: 24,
+    maxHeight: '90%', // Prevent overflow on small screens
   },
   header: {
     flexDirection: 'row',
@@ -227,6 +331,7 @@ const styles = StyleSheet.create({
   colorOption: {
     alignItems: 'center',
     width: '28%',
+    minWidth: 80, // Prevent too small on very small screens
   },
   colorCircleOuter: {
     width: 60,
@@ -259,6 +364,7 @@ const styles = StyleSheet.create({
   colorName: {
     fontSize: 13,
     fontWeight: '600',
+    textAlign: 'center',
   },
   premiumBadge: {
     paddingHorizontal: 6,

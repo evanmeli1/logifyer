@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { Alert } from 'react-native';
 import { supabase } from '../services/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import * as WebBrowser from 'expo-web-browser';
@@ -16,6 +17,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
+  retrySyncData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithGoogle: async () => {},
   signInWithApple: async () => {},
   signOut: async () => {},
+  retrySyncData: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -33,22 +36,179 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncFailed, setSyncFailed] = useState(false);
+  const mountedRef = useRef(true);
+  const authSubscriptionRef = useRef<any>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    mountedRef.current = true;
+    initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event, session?.user?.email);
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mountedRef.current = false;
+      if (authSubscriptionRef.current) {
+        authSubscriptionRef.current.unsubscribe();
+      }
+    };
   }, []);
+
+  const initializeAuth = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting session:', error);
+        throw error;
+      }
+
+      if (mountedRef.current) {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+
+      // Set up auth state listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (_event, session) => {
+          console.log('Auth state changed:', _event, session?.user?.email);
+          
+          if (!mountedRef.current) return;
+
+          setSession(session);
+          setUser(session?.user ?? null);
+
+          // Handle sign-in events
+          if (_event === 'SIGNED_IN' && session?.user) {
+            try {
+              await handlePostSignIn(session.user);
+            } catch (error) {
+              console.error('Post sign-in handling error:', error);
+              setSyncFailed(true);
+            }
+          }
+        }
+      );
+
+      authSubscriptionRef.current = subscription;
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      // Don't throw - allow app to continue in signed-out state
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handlePostSignIn = async (user: User) => {
+    if (!user?.id) {
+      throw new Error('Invalid user object');
+    }
+
+    // Link RevenueCat to this user
+    try {
+      const currentUserId = await Purchases.getAppUserID();
+      
+      // Only log in if not already logged in with this user
+      if (currentUserId !== user.id) {
+        await Purchases.logIn(user.id);
+        console.log('✅ RevenueCat linked to user:', user.id);
+      } else {
+        console.log('✅ RevenueCat already linked to user');
+      }
+    } catch (rcError: any) {
+      console.error('RevenueCat login error:', rcError);
+      // Show warning but don't block sign-in
+      Alert.alert(
+        'Subscription Warning',
+        'Could not sync your subscription status. Premium features may not work correctly. Please restart the app.',
+        [{ text: 'OK' }]
+      );
+    }
+
+    // Sync data with retry logic
+    try {
+      await syncUserData(user.id);
+      setSyncFailed(false);
+    } catch (syncError) {
+      console.error('Data sync error:', syncError);
+      setSyncFailed(true);
+      
+      Alert.alert(
+        'Sync Warning',
+        'Your data could not be synced. You can retry from Settings.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const syncUserData = async (userId: string, retries = 2): Promise<void> => {
+    let lastError: any = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`Sync attempt ${attempt + 1}/${retries + 1}`);
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+
+        // Check if user has cloud data
+        const { data: cloudPeople, error: cloudError } = await supabase
+          .from('people')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1);
+
+        if (cloudError) {
+          throw cloudError;
+        }
+
+        if (cloudPeople && cloudPeople.length > 0) {
+          console.log('📥 User has cloud data - syncing to local');
+          await syncCloudToLocal(userId);
+        } else {
+          console.log('📤 First time sign-in - syncing local to cloud');
+          await syncLocalToCloud(userId);
+        }
+
+        console.log('✅ Data sync completed successfully');
+        return; // Success!
+      } catch (error: any) {
+        lastError = error;
+        console.error(`Sync attempt ${attempt + 1} failed:`, error);
+        
+        // Don't retry on certain errors
+        if (error?.message?.includes('unauthorized') || 
+            error?.code === '401' ||
+            error?.code === 'PGRST301') {
+          console.error('Auth error during sync - not retrying');
+          throw error;
+        }
+      }
+    }
+
+    // All retries failed
+    throw lastError || new Error('Data sync failed after retries');
+  };
+
+  const retrySyncData = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'No user signed in');
+      return;
+    }
+
+    try {
+      await syncUserData(user.id);
+      setSyncFailed(false);
+      Alert.alert('Success', 'Your data has been synced successfully!');
+    } catch (error) {
+      console.error('Manual sync retry failed:', error);
+      Alert.alert(
+        'Sync Failed',
+        'Could not sync your data. Please try again later or contact support if the problem persists.'
+      );
+    }
+  };
 
   const signInWithGoogle = async () => {
     try {
@@ -67,59 +227,107 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Supabase auth error:', error);
+        
+        // Provide specific error messages
+        if (error.message?.includes('network')) {
+          throw new Error('Network error. Please check your connection.');
+        }
         throw error;
       }
 
-      console.log('Auth data:', data);
+      console.log('Auth data received');
 
-      if (data?.url) {
-        console.log('Opening browser to:', data.url);
-        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-        console.log('Browser result:', result);
+      if (!data?.url) {
+        throw new Error('No authentication URL received from server');
+      }
 
-        if (result.type === 'success') {
-          const url = result.url;
-          console.log('Success URL:', url);
-          
-          const params = new URLSearchParams(url.split('#')[1]);
+      console.log('Opening browser...');
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      console.log('Browser result type:', result.type);
+
+      if (result.type === 'success') {
+        const url = result.url;
+        console.log('Success! Processing authentication...');
+        
+        // Safely parse URL
+        try {
+          const hashPart = url.split('#')[1];
+          if (!hashPart) {
+            throw new Error('Invalid authentication response format');
+          }
+
+          const params = new URLSearchParams(hashPart);
           const access_token = params.get('access_token');
           const refresh_token = params.get('refresh_token');
 
-          if (access_token && refresh_token) {
-            await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
-            
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              // Link RevenueCat to this user
-              try {
-                await Purchases.logIn(user.id);
-                console.log('✅ RevenueCat linked to user');
-              } catch (rcError) {
-                console.log('RevenueCat login error:', rcError);
-              }
-
-              const { data: cloudPeople } = await supabase
-                .from('people')
-                .select('id')
-                .eq('user_id', user.id)
-                .limit(1);
-
-              if (cloudPeople && cloudPeople.length > 0) {
-                console.log('📥 User has cloud data - syncing to local');
-                await syncCloudToLocal(user.id);
-              } else {
-                console.log('📤 First time sign-in - syncing local to cloud');
-                await syncLocalToCloud(user.id);
-              }
-            }
+          if (!access_token || !refresh_token) {
+            throw new Error('Missing authentication tokens');
           }
+
+          // Set session with validation
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+
+          if (sessionError) {
+            throw sessionError;
+          }
+
+          if (!sessionData?.session) {
+            throw new Error('Failed to establish session');
+          }
+
+          console.log('✅ Session established successfully');
+          
+          // Get user and handle post-sign-in
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            throw userError;
+          }
+
+          if (!user) {
+            throw new Error('Failed to get user information');
+          }
+
+          await handlePostSignIn(user);
+        } catch (parseError) {
+          console.error('URL parsing error:', parseError);
+          throw new Error('Failed to process authentication response');
         }
+      } else if (result.type === 'cancel') {
+        console.log('User canceled sign-in');
+        // Don't throw error for user cancellation
+        return;
+      } else if (result.type === 'dismiss') {
+        console.log('Browser dismissed');
+        return;
+      } else if (result.type === 'locked') {
+        throw new Error('Another authentication is in progress');
+      } else {
+        throw new Error(`Unexpected browser result: ${result.type}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google sign-in error:', error);
+      
+      // User-friendly error messages
+      const errorMessage = error.message || 'An unknown error occurred';
+      
+      if (errorMessage.includes('network') || errorMessage.includes('Network')) {
+        Alert.alert(
+          'Connection Error',
+          'Could not connect to sign-in service. Please check your internet connection.'
+        );
+      } else if (errorMessage.includes('canceled') || errorMessage.includes('cancelled')) {
+        // Silent - user chose to cancel
+      } else {
+        Alert.alert(
+          'Sign In Failed',
+          'Could not complete Google sign-in. Please try again or contact support if the problem persists.'
+        );
+      }
+      
       throw error;
     }
   };
@@ -138,7 +346,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Apple credential received');
 
       if (!credential.identityToken) {
-        throw new Error('No identity token received');
+        throw new Error('No identity token received from Apple');
       }
 
       const { data, error } = await supabase.auth.signInWithIdToken({
@@ -148,62 +356,119 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Supabase Apple error:', error);
+        
+        if (error.message?.includes('network')) {
+          throw new Error('Network error. Please check your connection.');
+        }
         throw error;
+      }
+
+      if (!data?.session) {
+        throw new Error('Failed to establish session with Apple sign-in');
       }
 
       console.log('✅ Apple sign-in successful');
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Link RevenueCat to this user
-        try {
-          await Purchases.logIn(user.id);
-          console.log('✅ RevenueCat linked to user');
-        } catch (rcError) {
-          console.log('RevenueCat login error:', rcError);
-        }
-
-        const { data: cloudPeople } = await supabase
-          .from('people')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1);
-
-        if (cloudPeople && cloudPeople.length > 0) {
-          console.log('📥 Syncing cloud to local');
-          await syncCloudToLocal(user.id);
-        } else {
-          console.log('📤 Syncing local to cloud');
-          await syncLocalToCloud(user.id);
-        }
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        throw userError;
       }
+
+      if (!user) {
+        throw new Error('Failed to get user information');
+      }
+
+      await handlePostSignIn(user);
     } catch (error: any) {
-      if (error.code === 'ERR_REQUEST_CANCELED') {
+      if (error.code === 'ERR_REQUEST_CANCELED' || error.code === 'ERR_CANCELED') {
         console.log('User canceled Apple sign-in');
-      } else {
-        console.error('Apple sign-in error:', error);
-        throw error;
+        // Don't show error for user cancellation
+        return;
       }
+      
+      console.error('Apple sign-in error:', error);
+      
+      const errorMessage = error.message || 'An unknown error occurred';
+      
+      if (errorMessage.includes('network') || errorMessage.includes('Network')) {
+        Alert.alert(
+          'Connection Error',
+          'Could not connect to sign-in service. Please check your internet connection.'
+        );
+      } else {
+        Alert.alert(
+          'Sign In Failed',
+          'Could not complete Apple sign-in. Please try again or contact support if the problem persists.'
+        );
+      }
+      
+      throw error;
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    
-    // Log out of RevenueCat
     try {
-      await Purchases.logOut();
-      console.log('✅ RevenueCat logged out');
-    } catch (rcError) {
-      console.log('RevenueCat logout error:', rcError);
+      // Check if user is already signed out
+      if (!session && !user) {
+        console.log('Already signed out');
+        return;
+      }
+
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase sign-out error:', error);
+        throw error;
+      }
+      
+      // Log out of RevenueCat
+      try {
+        await Purchases.logOut();
+        console.log('✅ RevenueCat logged out');
+      } catch (rcError) {
+        console.error('RevenueCat logout error:', rcError);
+        // Don't block sign-out if RevenueCat fails
+      }
+      
+      // Clear local data
+      try {
+        await clearLocalData();
+        console.log('✅ Local data cleared');
+      } catch (clearError) {
+        console.error('Error clearing local data:', clearError);
+        // Don't block sign-out if clear fails
+      }
+
+      // Reset sync state
+      setSyncFailed(false);
+
+      console.log('✅ Sign out completed');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      
+      Alert.alert(
+        'Sign Out Error',
+        'There was a problem signing out. Please try again.',
+        [{ text: 'OK' }]
+      );
+      
+      throw error;
     }
-    
-    clearLocalData();
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, signInWithGoogle, signInWithApple, signOut }}>
+    <AuthContext.Provider 
+      value={{ 
+        session, 
+        user, 
+        loading, 
+        signInWithGoogle, 
+        signInWithApple, 
+        signOut,
+        retrySyncData,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
