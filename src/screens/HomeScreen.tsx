@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, {useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,9 @@ import { Person } from '../types';
 import { useTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
+import { useState, useCallback } from 'react';
+import StreakBadge from '../components/StreakBadge';
+import { getStreakStatus } from '../services/streakService';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -56,6 +59,27 @@ export default function HomeScreen() {
   const isInitialMount = useRef(true);
   const isMountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [streakStatus, setStreakStatus] = useState(getStreakStatus());
+
+  const streakScale = useSharedValue(1);
+  const prevStreakRef = useRef(streakStatus.current);
+
+  const streakAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: streakScale.value }],
+  }));
+
+useFocusEffect(
+  useCallback(() => {
+    const next = getStreakStatus();
+    setStreakStatus(next);
+
+    if (next.current !== prevStreakRef.current) {
+      streakScale.value = 1.25;
+      streakScale.value = withSpring(1, { damping: 12, stiffness: 220 });
+      prevStreakRef.current = next.current;
+    }
+  }, [])
+);
 
   const loadPeople = useCallback(() => {
     try {
@@ -393,33 +417,63 @@ export default function HomeScreen() {
       >
         <Animated.View entering={FadeIn.duration(400)} style={styles.headerContent}>
           <View style={styles.headerTop}>
-            <View>
-              <Text style={styles.headerTitle}>Logifyer</Text>
-              <Text style={styles.headerSubtitle}>
-                {people.length}/{currentLimit}{' '}
-                {people.length === 1 ? 'person' : 'people'} tracked
-                {!isPremium && people.length >= FREE_PEOPLE_LIMIT - 1 && (
-                  <Text style={styles.limitWarning}> • Near limit</Text>
-                )}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
-              onPress={() =>
-                (navigation as any).navigate('Settings', {
-                  screen: 'SettingsMain',
-                })
-              }
-            >
-              <View style={styles.settingsIconContainer}>
-                <View style={styles.settingsDot} />
-                <View style={styles.settingsDot} />
-                <View style={styles.settingsDot} />
-              </View>
-            </TouchableOpacity>
-          </View>
+  <View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <Text style={styles.headerTitle}>Logifyer</Text>
+      {streakStatus.current > 0 && (
+        <Animated.View entering={FadeInDown.duration(250)} style={streakAnimStyle}>
+          <View style={{
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'rgba(255,255,255,0.18)',
+  paddingHorizontal: 8,
+  paddingVertical: 3,
+  borderRadius: 999,
+}}>
+  <Text style={{ fontSize: 14 }}>🔥</Text>
+  <Text style={{
+    marginLeft: 2,
+    color: '#FFF',
+    fontSize: 17,
+    fontFamily: 'Inter_600SemiBold',
+  }}>
+    {streakStatus.current}
+  </Text>
+</View>
         </Animated.View>
-      </LinearGradient>
+      )}
+    </View>
+      <Text style={styles.headerSubtitle}>
+        {people.length}/{currentLimit}{' '}
+        {people.length === 1 ? 'person' : 'people'} tracked
+        {!isPremium && people.length === FREE_PEOPLE_LIMIT && (
+          <Text style={styles.limitWarning}> • Limit reached</Text>
+        )}
+        {!isPremium && people.length === FREE_PEOPLE_LIMIT - 1 && (
+          <Text style={styles.limitWarning}> • Near limit</Text>
+        )}
+        {isPremium && people.length === PREMIUM_PEOPLE_LIMIT && (
+          <Text style={styles.limitWarning}> • Limit reached</Text>
+        )}
+      </Text>
+    </View>
+        <TouchableOpacity
+          style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
+          onPress={() =>
+            (navigation as any).navigate('Settings', {
+              screen: 'SettingsMain',
+            })
+          }
+        >
+          <View style={styles.settingsIconContainer}>
+            <View style={styles.settingsDot} />
+            <View style={styles.settingsDot} />
+            <View style={styles.settingsDot} />
+          </View>
+        </TouchableOpacity>
+    </View>
+        </Animated.View>
+  </LinearGradient>
 
     {people.length === 0 ? (
       <Animated.View
