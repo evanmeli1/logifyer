@@ -465,11 +465,7 @@ useFocusEffect(
             })
           }
         >
-          <View style={styles.settingsIconContainer}>
-            <View style={styles.settingsDot} />
-            <View style={styles.settingsDot} />
-            <View style={styles.settingsDot} />
-          </View>
+          <Text style={{ fontSize: 22, color: '#FFF' }}>☰</Text>
         </TouchableOpacity>
     </View>
         </Animated.View>
@@ -651,7 +647,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 60,
-    paddingBottom: 28,
+    paddingBottom: 25,
     paddingHorizontal: 24,
   },
   headerContent: {},

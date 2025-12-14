@@ -878,7 +878,10 @@ export default function PersonDetailScreen({ route }: any) {
           </TouchableOpacity>
         </View>
       ) : (
-        <TouchableOpacity style={styles.fab} onPress={() => (navigation as any).navigate('LogIncident', { personId: personId })} activeOpacity={0.9}>
+        <TouchableOpacity style={styles.fab} onPress={() => (navigation as any).navigate('LogIncident', { 
+  personId: personId,
+  fromPersonDetail: true 
+})} activeOpacity={0.9}>
           <LinearGradient colors={[theme.primary, theme.primaryLight]} style={styles.fabGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Text style={styles.fabText}>+</Text>
           </LinearGradient>

@@ -210,11 +210,7 @@ export default function StatsScreen() {
             style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
             onPress={() => (navigation as any).navigate('Settings', { screen: 'SettingsMain' })}
           >
-            <View style={styles.settingsIconContainer}>
-              <View style={[styles.settingsDot, { backgroundColor: theme.headerText }]} />
-              <View style={[styles.settingsDot, { backgroundColor: theme.headerText }]} />
-              <View style={[styles.settingsDot, { backgroundColor: theme.headerText }]} />
-            </View>
+            <Text style={{ fontSize: 22, color: '#FFF' }}>☰</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
