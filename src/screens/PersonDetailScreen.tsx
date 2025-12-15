@@ -18,6 +18,54 @@ import { useTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
 
+type FeelingKey = 'calm' | 'joy' | 'tension' | 'sad' | 'connect' | 'anxious';
+type FeelingFilter = 'all' | FeelingKey;
+
+const FEELINGS: Record<FeelingKey, { label: string; grad: [string, string] }> = {
+  calm: { label: 'Calm', grad: ['#60A5FA', '#93C5FD'] },
+  joy: { label: 'Warm', grad: ['#FBBF24', '#FDE68A'] },
+  tension: { label: 'Sharp', grad: ['#F87171', '#FCA5A5'] },
+  anxious: { label: 'Uneasy', grad: ['#A78BFA', '#C4B5FD'] },
+  sad: { label: 'Grey', grad: ['#9CA3AF', '#D1D5DB'] },
+  connect: { label: 'Green', grad: ['#34D399', '#A7F3D0'] },
+};
+
+const FeelingChip = ({
+  feelingKey,
+  small,
+}: {
+  feelingKey?: string | null;
+  small?: boolean;
+}) => {
+  const key = (feelingKey as FeelingKey) || 'calm';
+  const meta = FEELINGS[key] || FEELINGS.calm;
+
+  return (
+    <LinearGradient
+      colors={meta.grad}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        paddingHorizontal: small ? 8 : 10,
+        paddingVertical: small ? 4 : 6,
+        borderRadius: 999,
+        opacity: small ? 0.85 : 1,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: small ? 10 : 12,
+          fontFamily: 'Inter_700Bold',
+          color: '#111827',
+        }}
+      >
+        {meta.label}
+      </Text>
+    </LinearGradient>
+  );
+};
+
+
 const PHOTO_DIR = `${FileSystem.documentDirectory}photos/`;
 
 interface RelationshipType {
@@ -49,6 +97,12 @@ export default function PersonDetailScreen({ route }: any) {
   const [visibleCount, setVisibleCount] = useState(50);
   const menuScale = useSharedValue(0);
   const menuOpacity = useSharedValue(0);
+  const [feelingFilter, setFeelingFilter] = useState<FeelingFilter>('all');
+
+  React.useEffect(() => {
+    setVisibleCount(50);
+  }, [feelingFilter]);
+
   
   // Refs for cleanup
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -511,6 +565,11 @@ export default function PersonDetailScreen({ route }: any) {
     const isPositive = item.points > 0;
     const isSelected = selectedIncidents.includes(item.id);
 
+    const cleanNote = (item.note || '')
+      .replace(/^Feeling:.*(\r?\n\r?\n|\r?\n)?/i, '')
+      .trim();
+
+
     return (
       <TouchableOpacity
         style={[
@@ -534,9 +593,19 @@ export default function PersonDetailScreen({ route }: any) {
                 <Text style={styles.incidentEmoji}>{item.category_emoji}</Text>
               </View>
               <View style={styles.incidentInfo}>
-                <Text style={[styles.incidentName, { color: theme.text }]}>{item.category_name}</Text>
-                <Text style={[styles.incidentTime, { color: theme.textMuted }]}>{formatDate(item.timestamp)}</Text>
+                <Text style={[styles.incidentName, { color: theme.text }]}>
+                  {item.category_name}
+                </Text>
+
+                <View style={styles.incidentMetaRow}>
+                  {item.feeling_key && <FeelingChip feelingKey={item.feeling_key} small />}
+                  <Text style={[styles.incidentTime, { color: theme.textMuted }]}>
+                    {formatDate(item.timestamp)}
+                  </Text>
+                </View>
               </View>
+
+
             </View>
             <View style={styles.pointsContainer}>
               {isMajor && (
@@ -549,7 +618,13 @@ export default function PersonDetailScreen({ route }: any) {
               </Text>
             </View>
           </View>
-          {item.note && <Text style={[styles.incidentNote, { color: theme.textMuted }]}>{item.note}</Text>}
+
+{cleanNote.length > 0 && (
+  <Text style={[styles.incidentNote, { color: theme.textMuted }]}>
+    {cleanNote}
+  </Text>
+)}
+
         </View>
       </TouchableOpacity>
     );
@@ -567,6 +642,12 @@ export default function PersonDetailScreen({ route }: any) {
   const positiveRate = incidents.length > 0 
     ? Math.round((incidents.filter(i => i.points > 0).length / incidents.length) * 100)
     : 0;
+
+    const filteredIncidents = incidents.filter(i => {
+  if (feelingFilter === 'all') return true;
+  const key = (i.feeling_key as FeelingKey) || 'calm';
+  return key === feelingFilter;
+});
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -757,8 +838,40 @@ export default function PersonDetailScreen({ route }: any) {
         </View>
       </View>
 
+      {/* Feeling Filters */}
+<ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10, gap: 10 }}
+>
+  {(['all', 'calm', 'joy', 'tension', 'anxious', 'sad', 'connect'] as FeelingFilter[]).map(k => {
+    const isActive = feelingFilter === k;
+    const label = k === 'all' ? 'All' : FEELINGS[k as FeelingKey].label;
+
+    return (
+      <TouchableOpacity
+        key={k}
+        onPress={() => setFeelingFilter(k)}
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: isActive ? theme.primary : theme.divider,
+          backgroundColor: isActive ? theme.primary + '15' : theme.card,
+        }}
+      >
+        <Text style={{ fontFamily: 'Inter_700Bold', color: isActive ? theme.primary : theme.text }}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  })}
+</ScrollView>
+
+
       <FlatList
-        data={incidents.slice(0, visibleCount)}
+        data={filteredIncidents.slice(0, visibleCount)}
         renderItem={renderIncident}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
@@ -771,7 +884,11 @@ export default function PersonDetailScreen({ route }: any) {
                 <View style={styles.patternsList}>
                   <View style={[styles.patternRow, { borderBottomColor: theme.divider }]}>
                     <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Biggest Issue</Text>
-                    <Text style={[styles.patternValue, { color: theme.text }]}>
+                    <Text
+                      style={[styles.patternValue, { color: theme.text }]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {(() => {
                         const negativeIncidents = incidents.filter(i => i.points < 0);
                         if (negativeIncidents.length === 0) return 'None 🎉';
@@ -784,7 +901,11 @@ export default function PersonDetailScreen({ route }: any) {
                   </View>
                   <View style={[styles.patternRow, { borderBottomColor: theme.divider }]}>
                     <Text style={[styles.patternLabel, { color: theme.textMuted }]}>Trend</Text>
-                    <Text style={[styles.patternValue, { color: theme.text }]}>
+                    <Text
+                      style={[styles.patternValue, { color: theme.text }]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {(() => {
                         if (incidents.length < 2) return '—';
                         const recent = incidents.slice(0, Math.ceil(incidents.length / 2));
@@ -851,10 +972,10 @@ export default function PersonDetailScreen({ route }: any) {
         )}
 
         ListFooterComponent={() => (
-          incidents.length > 50 && visibleCount < incidents.length ? (
+          filteredIncidents.length > 50 && visibleCount < filteredIncidents.length ? (
             <View style={styles.viewMoreContainer}>
               <Text style={[styles.showingText, { color: theme.textMuted }]}>
-                Showing {Math.min(visibleCount, incidents.length)} of {incidents.length}
+                Showing {Math.min(visibleCount, filteredIncidents.length)} of {filteredIncidents.length}
               </Text>
               <TouchableOpacity 
                 style={[styles.viewMoreButton, { backgroundColor: theme.primary + '15' }]} 
@@ -1322,21 +1443,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   patternsList: {},
-  patternRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  patternLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  patternValue: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
+    patternRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+    },
+
+    patternLabel: {
+  fontSize: 14,
+  fontFamily: 'Inter_400Regular',
+  width: 120,        // ✅ lock the left column width (tweak 110–140)
+  flexShrink: 0,
+},
+
+patternValue: {
+  fontSize: 14,
+  fontFamily: 'Inter_600SemiBold',
+  textAlign: 'right',
+  flex: 1,
+  minWidth: 0,
+},
+
+
   emptyPatterns: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
@@ -1394,9 +1523,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   incidentCard: {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
-    marginBottom: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    marginBottom: 14,
     flexDirection: 'row',
     alignItems: 'flex-start',
     shadowColor: '#000',
@@ -1425,8 +1556,9 @@ const styles = StyleSheet.create({
   incidentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
+
   incidentTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1447,17 +1579,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   incidentName: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 2,
-  },
+  fontSize: 15,
+  fontFamily: 'Inter_600SemiBold',
+  flexShrink: 1,
+},
   incidentTime: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
   },
   pointsContainer: {
     alignItems: 'flex-end',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
   },
   majorBadge: {
     paddingHorizontal: 6,
@@ -1572,4 +1705,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
   },
+  titleRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 10,
+},
+incidentMetaRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+  marginTop: 6,
+},patternValueWrap: {
+  flex: 1,
+  alignItems: 'flex-end',
+},
+
 });

@@ -10,6 +10,19 @@ import ThemeModal from '../components/ThemeModal';
 import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
 import { generateOverviewInsights, AIOverviewResult } from '../services/ai';
+import { getFeelingCounts } from '../database/db';
+
+type FeelingKey = 'calm' | 'joy' | 'tension' | 'sad' | 'connect' | 'anxious';
+
+const FEELINGS: Record<FeelingKey, { label: string; grad: [string, string] }> = {
+  calm: { label: 'Calm', grad: ['#60A5FA', '#93C5FD'] },
+  joy: { label: 'Warm', grad: ['#FBBF24', '#FDE68A'] },
+  tension: { label: 'Sharp', grad: ['#F87171', '#FCA5A5'] },
+  anxious: { label: 'Uneasy', grad: ['#A78BFA', '#C4B5FD'] },
+  sad: { label: 'Grey', grad: ['#9CA3AF', '#D1D5DB'] },
+  connect: { label: 'Green', grad: ['#34D399', '#A7F3D0'] },
+};
+
 
 export default function StatsScreen() {
   const navigation = useNavigation();
@@ -28,6 +41,17 @@ export default function StatsScreen() {
     thisWeekNegative: 0,
     gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
   });
+  const [feelingsAll, setFeelingsAll] = useState<{ feeling_key: string; count: number }[]>([]);
+  const [feelingsWeek, setFeelingsWeek] = useState<{ feeling_key: string; count: number }[]>([]);
+  
+
+  useFocusEffect(
+    React.useCallback(() => {
+      setFeelingsAll(getFeelingCounts());
+      setFeelingsWeek(getFeelingCounts(7));
+    }, [])
+  );
+
 
   useFocusEffect(
     React.useCallback(() => {
@@ -189,6 +213,71 @@ export default function StatsScreen() {
     }
   };
 
+  const renderFeelingBars = (data: { feeling_key: string; count: number }[]) => {
+    const total = data.reduce((sum, x) => sum + x.count, 0) || 1;
+    const sorted = [...data].sort((a, b) => b.count - a.count);
+
+    return (
+      <View style={{ gap: 12 }}>
+        {sorted.map((x) => {
+          const key = (x.feeling_key as FeelingKey) || 'calm';
+          const meta = FEELINGS[key] || FEELINGS.calm;
+
+          const pct = Math.round((x.count / total) * 100);
+
+          return (
+            <View key={`${x.feeling_key}-${x.count}`} style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* Gradient chip */}
+                <LinearGradient
+                  colors={meta.grad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 7,
+                    borderRadius: 999,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontFamily: 'Inter_700Bold', color: '#111827' }}>
+                    {meta.label}
+                  </Text>
+                </LinearGradient>
+
+                <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textMuted }}>
+                  {x.count} ({pct}%)
+                </Text>
+              </View>
+
+              {/* Bar with subtle gradient fill */}
+              <View
+                style={{
+                  height: 10,
+                  borderRadius: 6,
+                  backgroundColor: theme.backgroundSecondary,
+                  overflow: 'hidden',
+                }}
+              >
+                <LinearGradient
+                  colors={meta.grad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    width: `${pct}%`,
+                    height: '100%',
+                    borderRadius: 6,
+                  }}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
+
   const trend = getTrendInfo();
   const currentColorData = themeColors[themeColor as keyof typeof themeColors];
 
@@ -270,6 +359,24 @@ export default function StatsScreen() {
             </View>
           </View>
         </Animated.View>
+
+        {/* Feelings */}
+        <Animated.View entering={FadeInDown.delay(350).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Feelings</Text>
+
+          <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
+            Last 7 days
+          </Text>
+          {renderFeelingBars(feelingsWeek)}
+
+          <View style={{ height: 18 }} />
+
+          <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
+            All time
+          </Text>
+          {renderFeelingBars(feelingsAll)}
+        </Animated.View>
+
 
         {/* Health Distribution */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>

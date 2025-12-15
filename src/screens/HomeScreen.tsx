@@ -1,4 +1,4 @@
-import React, {useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,6 @@ import { useTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
 import { useState, useCallback } from 'react';
-import StreakBadge from '../components/StreakBadge';
 import { getStreakStatus } from '../services/streakService';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -51,35 +50,79 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { user } = useAuth();
+
   const [people, setPeople] = useState<(Person & { score: number; trend: string })[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('score-high');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+
   const isInitialMount = useRef(true);
   const isMountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [streakStatus, setStreakStatus] = useState(getStreakStatus());
 
+  const [streakStatus, setStreakStatus] = useState(getStreakStatus());
   const streakScale = useSharedValue(1);
   const prevStreakRef = useRef(streakStatus.current);
+
+  // NEW: Balloon picker state
+  const [showBalloonPicker, setShowBalloonPicker] = useState(false);
+
+  // NEW: Balloon options
+  const BALLOONS = [
+    {
+      key: 'calm',
+      title: 'Calm',
+      subtitle: 'Peace / Stability',
+      emoji: '🎈',
+      grad: ['#60A5FA', '#93C5FD'], // blue
+    },
+    {
+      key: 'joy',
+      title: 'Warm',
+      subtitle: 'Joy / Affection',
+      emoji: '🎈',
+      grad: ['#FBBF24', '#FDE68A'], // yellow
+    },
+    {
+      key: 'tension',
+      title: 'Sharp',
+      subtitle: 'Tension / Anger',
+      emoji: '🎈',
+      grad: ['#F87171', '#FCA5A5'], // red
+    },
+    {
+      key: 'sad',
+      title: 'Grey',
+      subtitle: 'Sadness / Isolation',
+      emoji: '🎈',
+      grad: ['#9CA3AF', '#D1D5DB'], // grey
+    },
+    {
+      key: 'connect',
+      title: 'Green',
+      subtitle: 'Trust / Clarity',
+      emoji: '🎈',
+      grad: ['#34D399', '#A7F3D0'], // green
+    },
+  ] as const;
 
   const streakAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: streakScale.value }],
   }));
 
-useFocusEffect(
-  useCallback(() => {
-    const next = getStreakStatus();
-    setStreakStatus(next);
+  useFocusEffect(
+    useCallback(() => {
+      const next = getStreakStatus();
+      setStreakStatus(next);
 
-    if (next.current !== prevStreakRef.current) {
-      streakScale.value = 1.25;
-      streakScale.value = withSpring(1, { damping: 12, stiffness: 220 });
-      prevStreakRef.current = next.current;
-    }
-  }, [])
-);
+      if (next.current !== prevStreakRef.current) {
+        streakScale.value = 1.25;
+        streakScale.value = withSpring(1, { damping: 12, stiffness: 220 });
+        prevStreakRef.current = next.current;
+      }
+    }, [])
+  );
 
   const loadPeople = useCallback(() => {
     try {
@@ -135,9 +178,7 @@ useFocusEffect(
 
       return () => {
         isMountedRef.current = false;
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
       };
     }, [loadPeople])
   );
@@ -182,6 +223,14 @@ useFocusEffect(
     }
 
     (navigation as any).navigate('AddPerson');
+  };
+
+  // NEW: Start log with balloon feeling
+  const handleStartLogWithFeeling = (feelingKey: string) => {
+    setShowBalloonPicker(false);
+
+    // IMPORTANT: Change 'CreateLog' to your real log screen route name
+    (navigation as any).navigate('LogIncident', { feelingKey });
   };
 
   const getFilteredAndSortedPeople = () => {
@@ -399,6 +448,77 @@ useFocusEffect(
   const currentLimit = isPremium ? PREMIUM_PEOPLE_LIMIT : FREE_PEOPLE_LIMIT;
   const isAtLimit = people.length >= currentLimit;
 
+  // NEW: Dashboard stats
+  const avgScore =
+    people.length > 0
+      ? Math.round(people.reduce((sum, p) => sum + p.score, 0) / people.length)
+      : 0;
+  const favoritesCount = people.filter(p => p.is_favorite).length;
+  const atRiskCount = people.filter(p => p.score < 40).length;
+
+  // NEW: Balloon sheet UI
+  const BalloonPickerSheet = () => {
+    if (!showBalloonPicker) return null;
+
+    return (
+      <>
+        <Pressable
+          style={styles.sheetOverlay}
+          onPress={() => setShowBalloonPicker(false)}
+        />
+
+        <Animated.View
+          entering={FadeInDown.duration(220)}
+          style={[
+            styles.sheet,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <View style={styles.sheetHeader}>
+            <Text style={[styles.sheetTitle, { color: theme.text }]}>
+              How did it feel overall?
+            </Text>
+            <Text style={[styles.sheetSubtitle, { color: theme.textMuted }]}>
+              One tap. No typing.
+            </Text>
+          </View>
+
+          <View style={styles.balloonRow}>
+            {BALLOONS.map(b => (
+              <TouchableOpacity
+                key={b.key}
+                activeOpacity={0.9}
+                onPress={() => handleStartLogWithFeeling(b.key)}
+                style={styles.balloonHit}
+              >
+                <LinearGradient
+                  colors={b.grad as any}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.balloonCard}
+                >
+                  <Text style={styles.balloonEmoji}>{b.emoji}</Text>
+                  <Text style={styles.balloonTitle}>{b.title}</Text>
+                  <Text style={styles.balloonSubtitle}>{b.subtitle}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setShowBalloonPicker(false)}
+            style={[styles.sheetCancel, { borderColor: theme.border }]}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.sheetCancelText, { color: theme.textMuted }]}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </>
+    );
+  };
+
   return (
     <LinearGradient
       colors={[theme.background, theme.backgroundSecondary]}
@@ -417,102 +537,167 @@ useFocusEffect(
       >
         <Animated.View entering={FadeIn.duration(400)} style={styles.headerContent}>
           <View style={styles.headerTop}>
-  <View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <Text style={styles.headerTitle}>Logifyer</Text>
-      {streakStatus.current > 0 && (
-        <Animated.View entering={FadeInDown.duration(250)} style={streakAnimStyle}>
-          <View style={{
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'rgba(255,255,255,0.18)',
-  paddingHorizontal: 8,
-  paddingVertical: 3,
-  borderRadius: 999,
-}}>
-  <Text style={{ fontSize: 14 }}>🔥</Text>
-  <Text style={{
-    marginLeft: 2,
-    color: '#FFF',
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-  }}>
-    {streakStatus.current}
-  </Text>
-</View>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.headerTitle}>Logifyer</Text>
+
+                {streakStatus.current > 0 && (
+                  <Animated.View
+                    entering={FadeInDown.duration(250)}
+                    style={[{ marginLeft: 10 }, streakAnimStyle]}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(255,255,255,0.18)',
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                        borderRadius: 999,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14 }}>🔥</Text>
+                      <Text
+                        style={{
+                          marginLeft: 2,
+                          color: '#FFF',
+                          fontSize: 17,
+                          fontFamily: 'Inter_600SemiBold',
+                        }}
+                      >
+                        {streakStatus.current}
+                      </Text>
+                    </View>
+                  </Animated.View>
+                )}
+              </View>
+
+              <Text style={styles.headerSubtitle}>
+                {people.length}/{currentLimit} {people.length === 1 ? 'person' : 'people'} tracked
+                {!isPremium && people.length === FREE_PEOPLE_LIMIT && (
+                  <Text style={styles.limitWarning}> • Limit reached</Text>
+                )}
+                {!isPremium && people.length === FREE_PEOPLE_LIMIT - 1 && (
+                  <Text style={styles.limitWarning}> • Near limit</Text>
+                )}
+                {isPremium && people.length === PREMIUM_PEOPLE_LIMIT && (
+                  <Text style={styles.limitWarning}> • Limit reached</Text>
+                )}
+              </Text>
+            </View>
+
+            <View style={styles.headerRight}>
+              {/* NEW: quick log button */}
+              <TouchableOpacity
+                style={[styles.newLogButton, { backgroundColor: theme.headerOverlay }]}
+                onPress={() => setShowBalloonPicker(true)}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.newLogButtonText}>+ Log</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
+                onPress={() =>
+                  (navigation as any).navigate('Settings', {
+                    screen: 'SettingsMain',
+                  })
+                }
+              >
+                <Text style={{ fontSize: 22, color: '#FFF' }}>☰</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </Animated.View>
-      )}
-    </View>
-      <Text style={styles.headerSubtitle}>
-        {people.length}/{currentLimit}{' '}
-        {people.length === 1 ? 'person' : 'people'} tracked
-        {!isPremium && people.length === FREE_PEOPLE_LIMIT && (
-          <Text style={styles.limitWarning}> • Limit reached</Text>
-        )}
-        {!isPremium && people.length === FREE_PEOPLE_LIMIT - 1 && (
-          <Text style={styles.limitWarning}> • Near limit</Text>
-        )}
-        {isPremium && people.length === PREMIUM_PEOPLE_LIMIT && (
-          <Text style={styles.limitWarning}> • Limit reached</Text>
-        )}
-      </Text>
-    </View>
-        <TouchableOpacity
-          style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
-          onPress={() =>
-            (navigation as any).navigate('Settings', {
-              screen: 'SettingsMain',
-            })
-          }
-        >
-          <Text style={{ fontSize: 22, color: '#FFF' }}>☰</Text>
-        </TouchableOpacity>
-    </View>
-        </Animated.View>
-  </LinearGradient>
+      </LinearGradient>
 
-    {people.length === 0 ? (
-      <Animated.View
-        entering={FadeIn.duration(400)}
-        style={styles.emptyContainer}
-      >
-        <Animated.View
-          entering={FadeInDown.duration(500).springify()}
-        >
-          <Image
-            source={require('../../assets/logi1234.png')}
-            style={styles.emptyImage}
-            resizeMode="contain"
-          />
-        </Animated.View>
+      {people.length === 0 ? (
+        <Animated.View entering={FadeIn.duration(400)} style={styles.emptyContainer}>
+          <Animated.View entering={FadeInDown.duration(500).springify()}>
+            <Image
+              source={require('../../assets/logi1234.png')}
+              style={styles.emptyImage}
+              resizeMode="contain"
+            />
+          </Animated.View>
 
-        <Text style={[styles.emptyTitle, { color: theme.text }]}>
-          Add someone to get started
-        </Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            Add someone to get started
+          </Text>
 
-        <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
-          Track relationship health, trends, and more.
-        </Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
+            Track relationship health, trends, and more.
+          </Text>
 
-        <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={handleAddPerson}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={[theme.primary, theme.primaryLight]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.emptyButtonGradient}
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={handleAddPerson}
+            activeOpacity={0.9}
           >
-            <Text style={styles.emptyButtonText}>Add Person</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animated.View>
-    ) : (
+            <LinearGradient
+              colors={[theme.primary, theme.primaryLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.emptyButtonGradient}
+            >
+              <Text style={styles.emptyButtonText}>Add Person</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-  // ... rest stays the same
+          {/* Balloon picker still works even if empty */}
+          <BalloonPickerSheet />
+        </Animated.View>
+      ) : (
         <>
+          {/* NEW: Dashboard ABOVE search bar */}
+          <View style={styles.dashboardWrap}>
+            <View style={[styles.dashboard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.dashboardTopRow}>
+                <View>
+                  <Text style={[styles.dashboardTitle, { color: theme.text }]}>
+                    Dashboard
+                  </Text>
+                  <Text style={[styles.dashboardSub, { color: theme.textMuted }]}>
+                    Quick glance + quick log
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.dashboardLogBtn}
+                  onPress={() => setShowBalloonPicker(true)}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={[theme.primary, theme.primaryLight]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.dashboardLogBtnGrad}
+                  >
+                    <Text style={styles.dashboardLogBtnText}>+ New Log</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.dashboardCards}>
+                <View style={[styles.dashCard, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Text style={[styles.dashCardLabel, { color: theme.textMuted }]}>Avg Score</Text>
+                  <Text style={[styles.dashCardValue, { color: theme.text }]}>{avgScore}</Text>
+                </View>
+
+                <View style={[styles.dashCard, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Text style={[styles.dashCardLabel, { color: theme.textMuted }]}>Favorites</Text>
+                  <Text style={[styles.dashCardValue, { color: theme.text }]}>{favoritesCount}</Text>
+                </View>
+
+                <View style={[styles.dashCard, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Text style={[styles.dashCardLabel, { color: theme.textMuted }]}>At Risk</Text>
+                  <Text style={[styles.dashCardValue, { color: theme.text }]}>{atRiskCount}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Controls (search + sort) */}
           <View style={styles.controlsContainer}>
             <View
               style={[
@@ -603,9 +788,7 @@ useFocusEffect(
 
           <FlatList
             data={filteredPeople}
-            renderItem={({ item, index }) => (
-              <PersonCard item={item} index={index} />
-            )}
+            renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -627,14 +810,15 @@ useFocusEffect(
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={
-                isAtLimit ? ['#9CA3AF', '#6B7280'] : [theme.primary, theme.primaryLight]
-              }
+              colors={isAtLimit ? ['#9CA3AF', '#6B7280'] : [theme.primary, theme.primaryLight]}
               style={styles.fabGradient}
             >
               <Text style={styles.fabText}>+</Text>
             </LinearGradient>
           </TouchableOpacity>
+
+          {/* NEW: Balloon picker sheet */}
+          <BalloonPickerSheet />
         </>
       )}
     </LinearGradient>
@@ -642,9 +826,8 @@ useFocusEffect(
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
   header: {
     paddingTop: 60,
     paddingBottom: 25,
@@ -655,6 +838,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 34,
@@ -679,19 +866,89 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  settingsIconContainer: {
+
+  // NEW: header +log
+  newLogButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    marginRight: 10,
+  },
+  newLogButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.2,
+  },
+
+  // NEW: Dashboard
+  dashboardWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 2,
+  },
+  dashboard: {
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+  },
+  dashboardTopRow: {
     flexDirection: 'row',
-    gap: 4,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  settingsDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFFFFF',
+  dashboardTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.2,
   },
+  dashboardSub: {
+    marginTop: 2,
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  dashboardLogBtn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  dashboardLogBtnGrad: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dashboardLogBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.2,
+  },
+  dashboardCards: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  dashCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 12,
+  },
+  dashCardLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 6,
+  },
+  dashCardValue: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.2,
+  },
+
   controlsContainer: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 8,
     position: 'relative',
     zIndex: 1000,
@@ -765,10 +1022,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Inter_500Medium',
   },
+
   listContent: {
     padding: 20,
     paddingTop: 8,
-    paddingBottom: 100,
+    paddingBottom: 140,
   },
   personCard: {
     marginBottom: 16,
@@ -791,6 +1049,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 18,
   },
+
   ringCenter: {
     position: 'absolute',
     top: 0,
@@ -810,9 +1069,8 @@ const styles = StyleSheet.create({
     marginTop: -1,
     fontFamily: 'Inter_600SemiBold',
   },
-  personInfo: {
-    flex: 1,
-  },
+
+  personInfo: { flex: 1 },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -825,9 +1083,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     flex: 1,
   },
-  favoriteIcon: {
-    fontSize: 24,
-  },
+  favoriteIcon: { fontSize: 24 },
   relationshipBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
@@ -844,13 +1100,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  trendArrow: {
-    fontSize: 16,
-  },
+  trendArrow: { fontSize: 16 },
   trendText: {
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
   },
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -858,7 +1113,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingBottom: 80,
   },
-
   emptyImage: {
     width: 200,
     height: 200,
@@ -902,6 +1156,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     letterSpacing: -0.3,
   },
+
   emptySearchState: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -915,6 +1170,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
     textAlign: 'center',
   },
+
   fab: {
     position: 'absolute',
     right: 24,
@@ -941,5 +1197,83 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 28,
     fontFamily: 'Inter_400Regular',
+  },
+
+  // NEW: Balloon picker sheet
+  sheetOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: 20000,
+  },
+  sheet: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    zIndex: 30000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+  sheetHeader: { marginBottom: 14 },
+  sheetTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: -0.2,
+  },
+  sheetSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+  balloonRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  balloonHit: {
+    width: '48%',
+  },
+  balloonCard: {
+    borderRadius: 18,
+    padding: 12,
+    minHeight: 90,
+    justifyContent: 'center',
+  },
+  balloonEmoji: {
+    fontSize: 20,
+    marginBottom: 6,
+  },
+  balloonTitle: {
+    color: '#111827',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 2,
+  },
+  balloonSubtitle: {
+    color: 'rgba(17,24,39,0.75)',
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    lineHeight: 16,
+  },
+  sheetCancel: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  sheetCancelText: {
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
   },
 });

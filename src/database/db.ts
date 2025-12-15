@@ -22,6 +22,7 @@ const getDb = (): SQLite.SQLiteDatabase => {
 export const initDatabase = () => {
   const db = getDb();
   
+  
   try {
     db.withTransactionSync(() => {
       // People table
@@ -80,6 +81,17 @@ export const initDatabase = () => {
           FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
         );
       `);
+
+      // SAFE MIGRATION: add feeling_key column
+      const incidentCols = db.getAllSync<{ name: string }>(
+        'PRAGMA table_info(incidents)'
+      );
+      const incidentColNames = incidentCols.map(c => c.name);
+
+      if (!incidentColNames.includes('feeling_key')) {
+        db.execSync(`ALTER TABLE incidents ADD COLUMN feeling_key TEXT;`);
+      }
+
 
       // Create indices for better performance
       db.execSync(`CREATE INDEX IF NOT EXISTS idx_incidents_person ON incidents(person_id);`);
@@ -439,8 +451,10 @@ export const logIncident = (
   categoryId: number,
   points: number,
   isMajor: boolean,
-  note?: string
+  note?: string,
+  feelingKey: string = 'calm'
 ): boolean => {
+
   const db = getDb();
   
   // Validate inputs
@@ -470,9 +484,18 @@ export const logIncident = (
     const finalPoints = isMajor ? points * majorMultiplier : points;
     
     db.runSync(
-      'INSERT INTO incidents (person_id, category_id, points, is_major, note, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
-      [personId, categoryId, finalPoints, isMajor ? 1 : 0, note?.trim() || null, new Date().toISOString()]
-    );
+  'INSERT INTO incidents (person_id, category_id, points, is_major, note, feeling_key, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  [
+    personId,
+    categoryId,
+    finalPoints,
+    isMajor ? 1 : 0,
+    note?.trim() || null,
+    feelingKey ?? 'calm',
+    new Date().toISOString(),
+  ]
+);
+
 
     const streakResult = updateStreak();
     if (streakResult.milestoneReached) {
@@ -832,5 +855,34 @@ export const deleteAllData = (): boolean => {
   } catch (error) {
     console.error('❌ Error deleting all data:', error);
     return false;
+  }
+};
+
+export const getFeelingCounts = (days?: number) => {
+  const db = getDb();
+
+  // Robust time compare for ISO timestamps like 2025-12-14T21:00:00.000Z
+  const tsExpr = "datetime(replace(substr(timestamp,1,19),'T',' '))";
+
+  const where = days
+    ? `WHERE ${tsExpr} >= datetime('now', ?)`
+    : '';
+
+  const params = days ? [`-${days} days`] : [];
+
+  try {
+    return db.getAllSync<{ feeling_key: string; count: number }>(
+      `
+      SELECT COALESCE(feeling_key, 'calm') as feeling_key, COUNT(*) as count
+      FROM incidents
+      ${where}
+      GROUP BY COALESCE(feeling_key, 'calm')
+      ORDER BY count DESC
+      `,
+      params
+    );
+  } catch (e) {
+    console.error('Error getting feeling counts:', e);
+    return [];
   }
 };
