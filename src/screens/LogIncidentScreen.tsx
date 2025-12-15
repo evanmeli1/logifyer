@@ -25,6 +25,7 @@ import Reanimated, {
   withSpring, 
   withTiming,
 } from 'react-native-reanimated';
+import { Image } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -213,6 +214,43 @@ export default function LogIncidentScreen({ route }: any) {
   </TouchableOpacity>
 </LinearGradient>
 
+{people.length === 0 ? (
+      <View style={styles.emptyContainer}>
+        <Image
+          source={require('../../assets/logi12345.png')}
+          style={styles.emptyImage}
+          resizeMode="contain"
+        />
+        
+        <Text style={[styles.emptyTitle, { color: theme.text }]}>
+          No people to log for
+        </Text>
+
+        <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
+          Add someone first to start tracking incidents
+        </Text>
+
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => {
+            // Navigate to Home tab which has AddPerson
+            (navigation as any).getParent()?.navigate('People');
+          }}
+          activeOpacity={0.9}
+        >
+          <LinearGradient
+            colors={[theme.primary, theme.primaryLight]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.emptyButtonGradient}
+          >
+            <Text style={styles.emptyButtonText}>Go to Home</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    ) : (
+      <>
+
       {menuVisible && (
         <>
           <Reanimated.View style={[styles.menuOverlay, overlayAnimatedStyle]}>
@@ -341,6 +379,8 @@ export default function LogIncidentScreen({ route }: any) {
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
+      </>
+    )}
     </KeyboardAvoidingView>
   );
 }
@@ -403,4 +443,53 @@ const styles = StyleSheet.create({
   fabContainer: { position: 'absolute', bottom: 20, left: 20, right: 20 },
   fab: { paddingVertical: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 },
   fabText: { color: '#FFF', fontSize: 16, fontFamily: 'Inter_700Bold', letterSpacing: -0.3 },
+  emptyContainer: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 32,
+  paddingBottom: 80,
+},
+emptyImage: {
+  width: 200,
+  height: 200,
+  marginBottom: 20,
+},
+emptyTitle: {
+  fontSize: 22,
+  fontFamily: 'Inter_700Bold',
+  marginBottom: 6,
+  textAlign: 'center',
+  letterSpacing: -0.3,
+},
+emptySubtitle: {
+  fontSize: 15,
+  fontFamily: 'Inter_500Medium',
+  textAlign: 'center',
+  marginBottom: 26,
+  lineHeight: 22,
+  maxWidth: 260,
+},
+emptyButton: {
+  borderRadius: 14,
+  overflow: 'hidden',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.12,
+  shadowRadius: 12,
+  elevation: 4,
+},
+emptyButtonGradient: {
+  paddingHorizontal: 28,
+  paddingVertical: 14,
+  borderRadius: 14,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+emptyButtonText: {
+  color: '#FFFFFF',
+  fontSize: 17,
+  fontFamily: 'Inter_700Bold',
+  letterSpacing: -0.3,
+},
 });

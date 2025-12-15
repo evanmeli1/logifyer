@@ -114,7 +114,7 @@ export const initSettings = () => {
       const existing = db.getFirstSync('SELECT * FROM settings WHERE id = 1');
       if (!existing) {
         db.runSync(
-          'INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, 3, 6, 1)'
+          'INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, 3, 0, 0)'
         );
         console.log('✅ Default settings created');
       }

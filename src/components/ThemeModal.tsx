@@ -116,7 +116,7 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
       statusBarTranslucent
     >
       <AnimatedPressable 
-        entering={FadeIn.duration(200)}
+        entering={FadeIn.duration(50)}
         exiting={FadeOut.duration(200)}
         style={styles.overlay} 
         onPress={handleClose}
@@ -125,7 +125,7 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
         accessibilityRole="button"
       >
         <Animated.View 
-          entering={SlideInDown.springify().damping(18).stiffness(120)}
+          entering={SlideInDown.springify().damping(25).stiffness(200)}
           style={[styles.container, { backgroundColor: theme.card }]}
         >
           <Pressable 
