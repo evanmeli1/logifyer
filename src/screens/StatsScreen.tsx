@@ -43,6 +43,10 @@ export default function StatsScreen() {
   });
   const [feelingsAll, setFeelingsAll] = useState<{ feeling_key: string; count: number }[]>([]);
   const [feelingsWeek, setFeelingsWeek] = useState<{ feeling_key: string; count: number }[]>([]);
+  const [showAllFeelings, setShowAllFeelings] = useState(false);
+  const [showAllTimeFeelings, setShowAllTimeFeelings] = useState(false);
+
+
   
 
   useFocusEffect(
@@ -213,13 +217,18 @@ export default function StatsScreen() {
     }
   };
 
-  const renderFeelingBars = (data: { feeling_key: string; count: number }[]) => {
+  const renderFeelingBars = (
+    data: { feeling_key: string; count: number }[],
+    limit = 3
+  ) => {
     const total = data.reduce((sum, x) => sum + x.count, 0) || 1;
     const sorted = [...data].sort((a, b) => b.count - a.count);
 
+    const shown = showAllFeelings ? sorted : sorted.slice(0, limit);
+
     return (
       <View style={{ gap: 12 }}>
-        {sorted.map((x) => {
+        {shown.map((x) => {
           const key = (x.feeling_key as FeelingKey) || 'calm';
           const meta = FEELINGS[key] || FEELINGS.calm;
 
@@ -227,8 +236,13 @@ export default function StatsScreen() {
 
           return (
             <View key={`${x.feeling_key}-${x.count}`} style={{ gap: 8 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                {/* Gradient chip */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
                 <LinearGradient
                   colors={meta.grad}
                   start={{ x: 0, y: 0 }}
@@ -240,7 +254,13 @@ export default function StatsScreen() {
                     alignSelf: 'flex-start',
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontFamily: 'Inter_700Bold', color: '#111827' }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontFamily: 'Inter_700Bold',
+                      color: '#111827',
+                    }}
+                  >
                     {meta.label}
                   </Text>
                 </LinearGradient>
@@ -250,7 +270,6 @@ export default function StatsScreen() {
                 </Text>
               </View>
 
-              {/* Bar with subtle gradient fill */}
               <View
                 style={{
                   height: 10,
@@ -273,9 +292,22 @@ export default function StatsScreen() {
             </View>
           );
         })}
+
+        {sorted.length > limit && (
+          <TouchableOpacity
+            onPress={() => setShowAllFeelings(v => !v)}
+            activeOpacity={0.8}
+            style={{ alignSelf: 'flex-start', marginTop: 2 }}
+          >
+            <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.primary }}>
+              {showAllFeelings ? 'Show less' : `Show all (${sorted.length})`}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
+
 
 
   const trend = getTrendInfo();
@@ -371,10 +403,29 @@ export default function StatsScreen() {
 
           <View style={{ height: 18 }} />
 
-          <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
-            All time
-          </Text>
-          {renderFeelingBars(feelingsAll)}
+          <View style={styles.allTimeToggleRow}>
+  <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>All time</Text>
+
+  <TouchableOpacity
+    onPress={() => setShowAllTimeFeelings(v => !v)}
+    activeOpacity={0.85}
+    style={[
+      styles.tinyPill,
+      { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
+    ]}
+  >
+    <Text style={[styles.tinyPillText, { color: theme.text }]}>
+      {showAllTimeFeelings ? 'Hide' : 'Show'}
+    </Text>
+    <Text style={[styles.tinyChevron, { color: theme.textMuted }]}>
+      {showAllTimeFeelings ? '▲' : '▼'}
+    </Text>
+  </TouchableOpacity>
+</View>
+
+{showAllTimeFeelings && renderFeelingBars(feelingsAll)}
+
+
         </Animated.View>
 
 
@@ -944,4 +995,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Inter_500Medium',
   },
+  allTimeToggleRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+},
+sectionLabel: {
+  fontFamily: 'Inter_600SemiBold',
+  fontSize: 13,
+},
+tinyPill: {
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 999,
+  borderWidth: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 6,
+},
+tinyPillText: {
+  fontFamily: 'Inter_600SemiBold',
+  fontSize: 12,
+},
+tinyChevron: {
+  fontSize: 12,
+  marginLeft: 2,
+},
+
 });

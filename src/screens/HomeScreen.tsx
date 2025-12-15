@@ -37,6 +37,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
 import { useState, useCallback } from 'react';
 import { getStreakStatus } from '../services/streakService';
+import { Keyboard} from 'react-native';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -52,8 +53,10 @@ export default function HomeScreen() {
   const { user } = useAuth();
 
   const [people, setPeople] = useState<(Person & { score: number; trend: string })[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('score-high');
+  const [peopleQuery, setPeopleQuery] = useState<{ q: string; sort: SortOption }>({
+    q: '',
+    sort: 'score-high',
+  });
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
 
@@ -64,6 +67,8 @@ export default function HomeScreen() {
   const [streakStatus, setStreakStatus] = useState(getStreakStatus());
   const streakScale = useSharedValue(1);
   const prevStreakRef = useRef(streakStatus.current);
+  const [controlsPillLayout, setControlsPillLayout] = useState({ y: 0, height: 0 });
+
 
   // NEW: Balloon picker state
   const [showBalloonPicker, setShowBalloonPicker] = useState(false);
@@ -105,6 +110,8 @@ export default function HomeScreen() {
       emoji: '🎈',
       grad: ['#34D399', '#A7F3D0'], // green
     },
+      { key: 'anxious', title: 'Uneasy', subtitle: 'Worried / Uncertain', emoji: '🎈',  grad: ['#A78BFA', '#C4B5FD'] },
+
   ] as const;
 
   const streakAnimStyle = useAnimatedStyle(() => ({
@@ -236,14 +243,13 @@ export default function HomeScreen() {
   const getFilteredAndSortedPeople = () => {
     let filtered = people;
 
-    if (searchQuery) {
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    const q = peopleQuery.q.trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
     }
 
     let sorted = [...filtered];
-    switch (sortBy) {
+    switch (peopleQuery.sort) {
       case 'score-high':
         sorted.sort((a, b) => b.score - a.score);
         break;
@@ -258,9 +264,9 @@ export default function HomeScreen() {
         break;
     }
 
-    // Favorites first
     return sorted.sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0));
   };
+
 
   const filteredPeople = getFilteredAndSortedPeople();
 
@@ -433,7 +439,7 @@ export default function HomeScreen() {
   };
 
   const getSortLabel = () => {
-    switch (sortBy) {
+    switch (peopleQuery.sort) {
       case 'score-high':
         return 'Highest Score';
       case 'score-low':
@@ -524,6 +530,7 @@ export default function HomeScreen() {
       colors={[theme.background, theme.backgroundSecondary]}
       style={styles.container}
     >
+      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
       {showSortMenu && (
         <Pressable
           style={styles.sortMenuOverlay}
@@ -540,36 +547,6 @@ export default function HomeScreen() {
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={styles.headerTitle}>Logifyer</Text>
-
-                {streakStatus.current > 0 && (
-                  <Animated.View
-                    entering={FadeInDown.duration(250)}
-                    style={[{ marginLeft: 10 }, streakAnimStyle]}
-                  >
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(255,255,255,0.18)',
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderRadius: 999,
-                      }}
-                    >
-                      <Text style={{ fontSize: 14 }}>🔥</Text>
-                      <Text
-                        style={{
-                          marginLeft: 2,
-                          color: '#FFF',
-                          fontSize: 17,
-                          fontFamily: 'Inter_600SemiBold',
-                        }}
-                      >
-                        {streakStatus.current}
-                      </Text>
-                    </View>
-                  </Animated.View>
-                )}
               </View>
 
               <Text style={styles.headerSubtitle}>
@@ -587,14 +564,6 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.headerRight}>
-              {/* NEW: quick log button */}
-              <TouchableOpacity
-                style={[styles.newLogButton, { backgroundColor: theme.headerOverlay }]}
-                onPress={() => setShowBalloonPicker(true)}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.newLogButtonText}>+ Log</Text>
-              </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
@@ -653,30 +622,37 @@ export default function HomeScreen() {
           <View style={styles.dashboardWrap}>
             <View style={[styles.dashboard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.dashboardTopRow}>
-                <View>
-                  <Text style={[styles.dashboardTitle, { color: theme.text }]}>
-                    Dashboard
-                  </Text>
-                  <Text style={[styles.dashboardSub, { color: theme.textMuted }]}>
-                    Quick glance + quick log
-                  </Text>
-                </View>
+  <View>
+    <Text style={[styles.dashboardTitle, { color: theme.text }]}>Dashboard</Text>
+  </View>
 
-                <TouchableOpacity
-                  style={styles.dashboardLogBtn}
-                  onPress={() => setShowBalloonPicker(true)}
-                  activeOpacity={0.9}
-                >
-                  <LinearGradient
-                    colors={[theme.primary, theme.primaryLight]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.dashboardLogBtnGrad}
-                  >
-                    <Text style={styles.dashboardLogBtnText}>+ New Log</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+  <View style={styles.dashboardTopRight}>
+    {streakStatus.current > 0 && (
+      <Animated.View style={[styles.dashboardStreakPill, streakAnimStyle]}>
+        <Text style={styles.dashboardStreakEmoji}>🔥</Text>
+        <Text style={[styles.dashboardStreakText, { color: theme.text }]}>
+          {streakStatus.current}
+        </Text>
+      </Animated.View>
+    )}
+
+    <TouchableOpacity
+      style={styles.dashboardLogBtn}
+      onPress={() => setShowBalloonPicker(true)}
+      activeOpacity={0.9}
+    >
+      <LinearGradient
+        colors={[theme.primary, theme.primaryLight]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.dashboardLogBtnGrad}
+      >
+        <Text style={styles.dashboardLogBtnText}>Quick Log</Text>
+      </LinearGradient>
+    </TouchableOpacity>
+  </View>
+</View>
+
 
               <View style={styles.dashboardCards}>
                 <View style={[styles.dashCard, { backgroundColor: theme.backgroundSecondary }]}>
@@ -697,94 +673,113 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Controls (search + sort) */}
-          <View style={styles.controlsContainer}>
-            <View
-              style={[
-                styles.searchContainer,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              <Text style={styles.searchIcon}>🔍</Text>
-              <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search people..."
-                placeholderTextColor={theme.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+          {/* Controls (merged search + sort) */}
+            <View style={styles.controlsContainer}>
+              <View
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  setControlsPillLayout({ y, height });
+                }}
+                style={[
+                  styles.controlsPill,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <Text style={styles.searchIcon}>🔍</Text>
+
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  placeholder="Search people..."
+                  placeholderTextColor={theme.textMuted}
+                  value={peopleQuery.q}
+                  onChangeText={(t) => setPeopleQuery(p => ({ ...p, q: t }))}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  clearButtonMode="while-editing"   
+                />
+
+                <View style={[styles.controlsDivider, { backgroundColor: theme.divider }]} />
+
+                <TouchableOpacity
+                  style={styles.sortPillBtn}
+                  onPress={() => setShowSortMenu(!showSortMenu)}
+                  activeOpacity={0.9}
+                >
+                  <Text style={[styles.sortPillText, { color: theme.text }]}>
+                    {getSortLabel()}
+                  </Text>
+                  <Text style={[styles.sortArrow, { color: theme.textMuted }]}>▼</Text>
+                </TouchableOpacity>
+              </View>
+
+              {showSortMenu && (
+                <View
+                  style={[
+                    styles.sortMenu,
+                    { backgroundColor: theme.card },
+                    { top: controlsPillLayout.y + controlsPillLayout.height + 8 },
+                  ]}
+                >
+                  {peopleQuery.sort !== 'score-high' && (
+                    <TouchableOpacity
+                      style={[styles.sortOption, { borderBottomColor: theme.divider }]}
+                      onPress={() => {
+                        setPeopleQuery(p => ({ ...p, sort: 'score-high' }));
+                        setShowSortMenu(false);
+                      }}
+                    >
+                      <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
+                        Highest Score
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {peopleQuery.sort !== 'score-low' && (
+                    <TouchableOpacity
+                      style={[styles.sortOption, { borderBottomColor: theme.divider }]}
+                      onPress={() => {
+                        setPeopleQuery(p => ({ ...p, sort: 'score-low' }));
+                        setShowSortMenu(false);
+                      }}
+                    >
+                      <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
+                        Lowest Score
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {peopleQuery.sort !== 'name' && (
+                    <TouchableOpacity
+                      style={[styles.sortOption, { borderBottomColor: theme.divider }]}
+                      onPress={() => {
+                        setPeopleQuery(p => ({ ...p, sort: 'name' }));
+                        setShowSortMenu(false);
+                      }}
+                    >
+                      <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
+                        Name (A-Z)
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {peopleQuery.sort !== 'recent' && (
+                    <TouchableOpacity
+                      style={[styles.sortOption, styles.sortOptionLast]}
+                      onPress={() => {
+                        setPeopleQuery(p => ({ ...p, sort: 'recent' }));
+                        setShowSortMenu(false);
+                      }}
+                    >
+                      <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
+                        Recently Added
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.sortButton,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-              onPress={() => setShowSortMenu(!showSortMenu)}
-            >
-              <Text style={[styles.sortButtonText, { color: theme.text }]}>
-                {getSortLabel()}
-              </Text>
-              <Text style={[styles.sortArrow, { color: theme.textMuted }]}>▼</Text>
-            </TouchableOpacity>
-
-            {showSortMenu && (
-              <View style={[styles.sortMenu, { backgroundColor: theme.card }]}>
-                {sortBy !== 'score-high' && (
-                  <TouchableOpacity
-                    style={[styles.sortOption, { borderBottomColor: theme.divider }]}
-                    onPress={() => {
-                      setSortBy('score-high');
-                      setShowSortMenu(false);
-                    }}
-                  >
-                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
-                      Highest Score
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {sortBy !== 'score-low' && (
-                  <TouchableOpacity
-                    style={[styles.sortOption, { borderBottomColor: theme.divider }]}
-                    onPress={() => {
-                      setSortBy('score-low');
-                      setShowSortMenu(false);
-                    }}
-                  >
-                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
-                      Lowest Score
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {sortBy !== 'name' && (
-                  <TouchableOpacity
-                    style={[styles.sortOption, { borderBottomColor: theme.divider }]}
-                    onPress={() => {
-                      setSortBy('name');
-                      setShowSortMenu(false);
-                    }}
-                  >
-                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
-                      Name (A-Z)
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {sortBy !== 'recent' && (
-                  <TouchableOpacity
-                    style={[styles.sortOption, styles.sortOptionLast]}
-                    onPress={() => {
-                      setSortBy('recent');
-                      setShowSortMenu(false);
-                    }}
-                  >
-                    <Text style={[styles.sortOptionText, { color: theme.textMuted }]}>
-                      Recently Added
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
 
           <FlatList
             data={filteredPeople}
@@ -792,12 +787,14 @@ export default function HomeScreen() {
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             ListEmptyComponent={() =>
-              searchQuery ? (
+              peopleQuery.q ? (
                 <View style={styles.emptySearchState}>
                   <Text style={styles.emptySearchIcon}>🔍</Text>
                   <Text style={[styles.emptySearchText, { color: theme.textMuted }]}>
-                    No people found for "{searchQuery}"
+                    No people found for "{peopleQuery.q}"
                   </Text>
                 </View>
               ) : null
@@ -821,6 +818,7 @@ export default function HomeScreen() {
           <BalloonPickerSheet />
         </>
       )}
+      </Pressable>
     </LinearGradient>
   );
 }
@@ -903,11 +901,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     letterSpacing: -0.2,
   },
-  dashboardSub: {
-    marginTop: 2,
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-  },
   dashboardLogBtn: {
     borderRadius: 14,
     overflow: 'hidden',
@@ -954,15 +947,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 1000,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-  },
   searchIcon: {
     fontSize: 18,
     marginRight: 8,
@@ -971,15 +955,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontFamily: 'Inter_500Medium',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
   },
   sortButtonText: {
     fontSize: 15,
@@ -999,7 +974,6 @@ const styles = StyleSheet.create({
   },
   sortMenu: {
     position: 'absolute',
-    top: 110,
     left: 20,
     right: 20,
     borderRadius: 14,
@@ -1276,4 +1250,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
   },
+  dashboardTopRight: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 10,
+},
+dashboardStreakPill: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+  borderRadius: 999,
+  backgroundColor: 'rgba(0,0,0,0.06)',
+},
+dashboardStreakEmoji: { fontSize: 14 },
+dashboardStreakText: {
+  marginLeft: 6,
+  fontSize: 14,
+  fontFamily: 'Inter_700Bold',
+  letterSpacing: -0.2,
+},
+controlsPill: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 14,
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderWidth: 1,
+},
+controlsDivider: {
+  width: 1,
+  height: 22,
+  marginHorizontal: 10,
+  borderRadius: 1,
+},
+sortPillBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+sortPillText: {
+  fontSize: 14,
+  fontFamily: 'Inter_600SemiBold',
+},
+
+
 });
