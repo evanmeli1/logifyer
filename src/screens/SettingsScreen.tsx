@@ -5,16 +5,21 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getSettings } from '../database/db';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../theme';
 import { checkSubscription } from '../services/purchases';
 import { deleteAllData } from '../database/db';
+import { themeColors } from '../theme/themes';
+import ThemeModal from '../components/ThemeModal';
+import { useTheme } from '../theme';
+
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { user, signOut } = useAuth();
-  const { theme } = useTheme();
+  const { theme, themeColor } = useTheme();
   const [settings, setSettings] = React.useState<any>(null);
   const [isPremium, setIsPremium] = React.useState(false);
+  const [showThemeModal, setShowThemeModal] = React.useState(false);
+  const currentColorData = themeColors[themeColor as keyof typeof themeColors];
 
   useFocusEffect(
     React.useCallback(() => {
@@ -275,20 +280,43 @@ export default function SettingsScreen() {
         </View>
 
         {/* Categories Section */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
-          <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>CATEGORIES</Text>
-          
-          <TouchableOpacity 
-            style={[styles.settingRow, styles.lastRow]}
-            onPress={() => (navigation as any).navigate('ManageCategories')}
-          >
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, { color: theme.text }]}>Manage Custom Categories</Text>
-              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Add, edit, or delete custom categories</Text>
-            </View>
-            <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
+            <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>CATEGORIES</Text>
+
+            {/* Manage Categories */}
+            <TouchableOpacity
+              style={[styles.settingRow, { borderBottomColor: theme.divider }]}
+              onPress={() => (navigation as any).navigate('ManageCategories')}
+            >
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingTitle, { color: theme.text }]}>
+                  Manage Custom Categories
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>
+                  Add, edit, or delete custom categories
+                </Text>
+              </View>
+              <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
+            {/* Personalize Theme */}
+            <TouchableOpacity
+              style={[styles.settingRow, styles.lastRow]}
+              onPress={() => setShowThemeModal(true)}
+            >
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingTitle, { color: theme.text }]}>
+                  Personalize Theme
+                </Text>
+                <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>
+                  Current: {currentColorData.name}
+                </Text>
+              </View>
+              <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+
 
         {/* Data Section */}
         <View style={[styles.section, { backgroundColor: theme.card }]}>
@@ -352,6 +380,14 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <ThemeModal
+        visible={showThemeModal}
+        onClose={() => setShowThemeModal(false)}
+        onUpgrade={() => {
+          setShowThemeModal(false);
+          (navigation as any).navigate('Paywall');
+        }}
+      />
     </View>
   );
 }

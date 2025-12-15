@@ -20,6 +20,9 @@ import { checkSubscription } from '../services/purchases';
 
 type FeelingKey = 'calm' | 'joy' | 'tension' | 'sad' | 'connect' | 'anxious';
 type FeelingFilter = 'all' | FeelingKey;
+type ImpactFilter = 'all' | 'positive' | 'negative' | 'major';
+
+
 
 const FEELINGS: Record<FeelingKey, { label: string; grad: [string, string] }> = {
   calm: { label: 'Calm', grad: ['#60A5FA', '#93C5FD'] },
@@ -98,12 +101,23 @@ export default function PersonDetailScreen({ route }: any) {
   const menuScale = useSharedValue(0);
   const menuOpacity = useSharedValue(0);
   const [feelingFilter, setFeelingFilter] = useState<FeelingFilter>('all');
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  const [impactFilter, setImpactFilter] = useState<ImpactFilter>('all');
 
   React.useEffect(() => {
     setVisibleCount(50);
-  }, [feelingFilter]);
+  }, [feelingFilter, impactFilter]);
 
-  
+
+  const activeFilterCount =
+    (feelingFilter !== 'all' ? 1 : 0) +
+    (impactFilter !== 'all' ? 1 : 0);
+
+  const clearFilters = () => {
+    setFeelingFilter('all');
+    setImpactFilter('all');
+  };
+
   // Refs for cleanup
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
@@ -644,10 +658,20 @@ export default function PersonDetailScreen({ route }: any) {
     : 0;
 
     const filteredIncidents = incidents.filter(i => {
-  if (feelingFilter === 'all') return true;
-  const key = (i.feeling_key as FeelingKey) || 'calm';
-  return key === feelingFilter;
-});
+      // Feeling
+      if (feelingFilter !== 'all') {
+        const key = (i.feeling_key as FeelingKey) || 'calm';
+        if (key !== feelingFilter) return false;
+      }
+
+      // Impact
+      if (impactFilter === 'positive' && i.points <= 0) return false;
+      if (impactFilter === 'negative' && i.points >= 0) return false;
+      if (impactFilter === 'major' && i.is_major !== 1) return false;
+
+      return true;
+    });
+
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -821,6 +845,149 @@ export default function PersonDetailScreen({ route }: any) {
         </Pressable>
       </Modal>
 
+      <Modal
+  visible={filterSheetVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setFilterSheetVisible(false)}
+>
+  <Pressable style={styles.modalOverlay} onPress={() => setFilterSheetVisible(false)}>
+    <Pressable
+      style={[
+        styles.filterSheet,
+        { backgroundColor: theme.card, borderTopColor: theme.divider },
+      ]}
+      onPress={(e) => e.stopPropagation()}
+    >
+      <View style={[styles.sheetHandle, { backgroundColor: theme.divider }]} />
+
+      {/* Header */}
+      <View style={styles.filterHeaderRow}>
+        <View>
+          <Text style={[styles.filterTitle, { color: theme.text }]}>Filter</Text>
+          <Text style={[styles.filterSubtitle, { color: theme.textMuted }]}>
+            {filteredIncidents.length} results
+          </Text>
+        </View>
+
+        <View style={styles.filterHeaderActions}>
+          <TouchableOpacity onPress={clearFilters} disabled={activeFilterCount === 0} activeOpacity={0.8}>
+            <Text
+              style={[
+                styles.filterClearText,
+                {
+                  color: activeFilterCount === 0 ? theme.textMuted : theme.primary,
+                  opacity: activeFilterCount === 0 ? 0.6 : 1,
+                },
+              ]}
+            >
+              Clear
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setFilterSheetVisible(false)} activeOpacity={0.8}>
+            <View style={[styles.iconButton, { backgroundColor: theme.backgroundSecondary }]}>
+              <Text style={[styles.iconButtonText, { color: theme.textMuted }]}>✕</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Feeling */}
+      <View
+        style={[
+          styles.filterSectionCard,
+          { backgroundColor: theme.backgroundSecondary, borderColor: theme.divider },
+        ]}
+      >
+        <Text style={[styles.filterSectionLabel, { color: theme.textMuted }]}>FEELING</Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollRow}
+        >
+          {(['all', 'calm', 'joy', 'tension', 'anxious', 'sad', 'connect'] as FeelingFilter[]).map((k) => {
+            const isActive = feelingFilter === k;
+            const label = k === 'all' ? 'All' : FEELINGS[k as FeelingKey].label;
+
+            return (
+              <TouchableOpacity
+                key={k}
+                onPress={() => setFeelingFilter(k)}
+                activeOpacity={0.85}
+                style={[
+                  styles.filterFeelingChip,
+                  {
+                    borderColor:
+                      isActive && k !== 'all'
+                        ? FEELINGS[k as FeelingKey].grad[0]
+                        : isActive
+                        ? theme.primary
+                        : theme.divider,
+                    backgroundColor:
+                      isActive && k !== 'all'
+                        ? FEELINGS[k as FeelingKey].grad[0]
+                        : isActive
+                        ? theme.primary + '12'
+                        : theme.card,
+                  },
+                ]}
+              >
+                <Text style={[styles.filterFeelingText, { color: isActive && k !== 'all' ? '#111827' : (isActive ? theme.primary : theme.text) }]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+        </ScrollView>
+      </View>
+
+      {/* Impact */}
+      <View
+        style={[
+          styles.filterSectionCard,
+          { backgroundColor: theme.backgroundSecondary, borderColor: theme.divider },
+        ]}
+      >
+        <Text style={[styles.filterSectionLabel, { color: theme.textMuted }]}>IMPACT</Text>
+
+        <View style={styles.impactGrid}>
+          {([
+            ['all', 'All'],
+            ['positive', 'Positive'],
+            ['negative', 'Negative'],
+            ['major', 'Major'],
+          ] as const).map(([key, label]) => {
+            const active = impactFilter === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setImpactFilter(key)}
+                activeOpacity={0.9}
+                style={[
+                  styles.impactPill,
+                  {
+                    backgroundColor: active ? theme.primary : theme.card,
+                    borderColor: active ? theme.primary : theme.divider,
+                  },
+                ]}
+              >
+                <Text style={{ fontFamily: 'Inter_700Bold', color: active ? '#FFF' : theme.text }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      <Text style={[styles.filterHint, { color: theme.textMuted }]}>Changes apply instantly</Text>
+    </Pressable>
+  </Pressable>
+</Modal>
+
       <View style={[styles.statsBar, { backgroundColor: theme.card }]}>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: theme.text }]}>{incidents.length}</Text>
@@ -838,37 +1005,7 @@ export default function PersonDetailScreen({ route }: any) {
         </View>
       </View>
 
-      {/* Feeling Filters */}
-<ScrollView
-  horizontal
-  showsHorizontalScrollIndicator={false}
-  contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10, gap: 10 }}
->
-  {(['all', 'calm', 'joy', 'tension', 'anxious', 'sad', 'connect'] as FeelingFilter[]).map(k => {
-    const isActive = feelingFilter === k;
-    const label = k === 'all' ? 'All' : FEELINGS[k as FeelingKey].label;
-
-    return (
-      <TouchableOpacity
-        key={k}
-        onPress={() => setFeelingFilter(k)}
-        style={{
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          borderRadius: 999,
-          borderWidth: 1,
-          borderColor: isActive ? theme.primary : theme.divider,
-          backgroundColor: isActive ? theme.primary + '15' : theme.card,
-        }}
-      >
-        <Text style={{ fontFamily: 'Inter_700Bold', color: isActive ? theme.primary : theme.text }}>
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
-  })}
-</ScrollView>
-
+                  
 
       <FlatList
         data={filteredIncidents.slice(0, visibleCount)}
@@ -960,7 +1097,37 @@ export default function PersonDetailScreen({ route }: any) {
               )}
             </View>
 
-            {incidents.length > 0 && <Text style={[styles.incidentsHeader, { color: theme.text }]}>Recent Activity</Text>}
+            {incidents.length > 0 && (
+  <View style={styles.recentHeaderRow}>
+    <Text
+      style={[styles.recentHeaderTitle, { color: theme.text }]}
+      numberOfLines={1}
+      ellipsizeMode="tail"
+    >
+      Recent Activity
+    </Text>
+
+    <TouchableOpacity
+      onPress={() => setFilterSheetVisible(true)}
+      activeOpacity={0.85}
+      style={[
+        styles.filterButton,
+        { backgroundColor: theme.card, borderColor: theme.divider },
+      ]}
+    >
+      <Text style={[styles.filterIcon, { color: theme.textMuted }]}>⛃</Text>
+      <Text style={[styles.filterLabel, { color: theme.textMuted }]}>Filter</Text>
+
+      {activeFilterCount > 0 && (
+        <View style={[styles.filterBadge, { backgroundColor: theme.primary }]}>
+          <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  </View>
+)}
+
+
           </>
         )}
         ListEmptyComponent={() => (
@@ -1720,5 +1887,178 @@ incidentMetaRow: {
   flex: 1,
   alignItems: 'flex-end',
 },
+filterSheet: {
+  borderTopLeftRadius: 26,
+  borderTopRightRadius: 26,
+  padding: 18,
+  paddingBottom: 22,
+  maxHeight: '75%',
+  borderTopWidth: 1,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: -6 },
+  shadowOpacity: 0.12,
+  shadowRadius: 18,
+  elevation: 18,
+},
+
+filterHeaderRow: {
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  marginBottom: 14,
+},
+
+filterHeaderActions: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 14,
+},
+
+filterTitle: {
+  fontSize: 18,
+  fontFamily: 'Inter_700Bold',
+},
+
+filterSubtitle: {
+  marginTop: 4,
+  fontSize: 12,
+  fontFamily: 'Inter_400Regular',
+},
+
+filterClearText: {
+  fontSize: 14,
+  fontFamily: 'Inter_600SemiBold',
+},
+
+iconButton: {
+  width: 34,
+  height: 34,
+  borderRadius: 17,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+iconButtonText: {
+  fontSize: 16,
+  fontFamily: 'Inter_700Bold',
+},
+
+filterSectionCard: {
+  borderRadius: 16,
+  padding: 14,
+  borderWidth: 1,
+  marginTop: 12,
+},
+
+filterSectionLabel: {
+  fontSize: 12,
+  fontFamily: 'Inter_700Bold',
+  letterSpacing: 1,
+},
+
+filterScrollRow: {
+  gap: 10,
+  paddingTop: 10,
+  paddingBottom: 2,
+},
+
+filterChip: {
+  paddingHorizontal: 12,
+  paddingVertical: 9,
+  borderRadius: 999,
+  borderWidth: 1,
+},
+
+impactGrid: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 10,
+  marginTop: 12,
+},
+
+impactPill: {
+  paddingHorizontal: 14,
+  paddingVertical: 11,
+  borderRadius: 999,
+  borderWidth: 1,
+},
+
+filterHint: {
+  textAlign: 'center',
+  marginTop: 14,
+  fontSize: 12,
+  fontFamily: 'Inter_400Regular',
+},
+recentHeaderRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  width: '100%',
+  flexWrap: 'nowrap',
+  marginTop: 8,
+  marginBottom: 12,
+},
+
+recentHeaderTitle: {
+  fontSize: 16,
+  fontFamily: 'Inter_700Bold',
+  flex: 1,          // ✅ allows the title to take remaining space
+  minWidth: 0,      // ✅ critical: allows ellipsis instead of pushing button down
+  paddingRight: 10,
+},
+
+filterButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 12,
+  height: 36,
+  borderRadius: 999,
+  borderWidth: 1,
+  flexShrink: 0,    // ✅ never wraps
+},
+
+filterIcon: {
+  fontSize: 19,
+  fontFamily: 'Inter_700Bold',
+  marginRight: 6,
+  lineHeight: 35,
+
+},
+
+filterLabel: {
+  fontSize: 13,
+  lineHeight: 15,
+  fontFamily: 'Inter_600SemiBold',
+},
+
+filterBadge: {
+  marginLeft: 8,
+  minWidth: 18,
+  height: 18,
+  borderRadius: 9,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 6,
+},
+
+filterBadgeText: {
+  color: '#FFF',
+  fontSize: 11,
+  fontFamily: 'Inter_700Bold',
+},
+filterFeelingChip: {
+  height: 36,
+  paddingHorizontal: 12,
+  borderRadius: 999,
+  borderWidth: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+filterFeelingText: {
+  fontSize: 12,
+  fontFamily: 'Inter_700Bold',
+  lineHeight: 14,
+},
+
 
 });

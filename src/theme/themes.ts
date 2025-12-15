@@ -1,6 +1,6 @@
 export type ThemeColor = 'rose' | 'ocean' | 'purple' | 'emerald' | 'amber' | 'sunset';
-
 export type ThemeMode = 'light' | 'dark';
+export type ThemeModePreference = 'system' | 'light' | 'dark';
 
 export interface Theme {
   mode: ThemeMode;

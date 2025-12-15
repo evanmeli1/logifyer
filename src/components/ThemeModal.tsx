@@ -25,10 +25,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const freeThemes: ThemeColor[] = ['rose', 'ocean'];
 
 export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalProps) {
-  const { theme, themeColor, themeMode, isPremium, setThemeColor, toggleDarkMode } = useTheme();
+  const { theme, themeColor, themeMode, resolvedMode, isPremium, setThemeColor, setThemeMode } = useTheme();
 
   // Validate theme context is available
-  if (!theme || !setThemeColor || !toggleDarkMode) {
+  if (!theme || !setThemeColor || !setThemeMode) {
     console.error('ThemeModal: Theme context is not properly initialized');
     return null;
   }
@@ -63,20 +63,6 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
       );
     }
   }, [isPremium, setThemeColor, onUpgrade]);
-
-  // Memoize dark mode toggle to prevent unnecessary re-renders
-  const handleDarkModeToggle = useCallback((value: boolean) => {
-    try {
-      toggleDarkMode();
-    } catch (error) {
-      console.error('ThemeModal: Error toggling dark mode:', error);
-      Alert.alert(
-        'Theme Error',
-        'Could not toggle dark mode. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  }, [toggleDarkMode]);
 
   // Safe close handler with error boundary
   const handleClose = useCallback(() => {
@@ -125,6 +111,7 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
         accessibilityRole="button"
       >
         <Animated.View 
+          key={`${resolvedMode}-${themeColor}`}
           entering={SlideInDown.springify().damping(25).stiffness(200)}
           style={[styles.container, { backgroundColor: theme.card }]}
         >
@@ -150,24 +137,25 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
             {/* Dark Mode Toggle */}
             <View style={[styles.darkModeRow, { borderBottomColor: theme.divider }]}>
               <View style={styles.darkModeInfo}>
-                <Text style={styles.darkModeIcon}>{themeMode === 'dark' ? '🌙' : '☀️'}</Text>
+                <Text style={styles.darkModeIcon}>{resolvedMode === 'dark' ? '🌙' : '☀️'}</Text>
                 <View>
                   <Text style={[styles.darkModeTitle, { color: theme.text }]}>Dark Mode</Text>
                   <Text style={[styles.darkModeSubtitle, { color: theme.textMuted }]}>
-                    {themeMode === 'dark' ? 'On' : 'Off'}
+                    {resolvedMode === 'dark' ? 'On' : 'Off'}
                   </Text>
                 </View>
               </View>
+
               <Switch
-                value={themeMode === 'dark'}
-                onValueChange={handleDarkModeToggle}
+                value={resolvedMode === 'dark'}
+                onValueChange={(v) => setThemeMode(v ? 'dark' : 'light')}
                 trackColor={{ false: '#E5E7EB', true: theme.primary + '60' }}
-                thumbColor={themeMode === 'dark' ? theme.primary : '#FFFFFF'}
-                accessible={true}
-                accessibilityLabel={`Dark mode is ${themeMode === 'dark' ? 'on' : 'off'}`}
-                accessibilityRole="switch"
+                thumbColor={resolvedMode === 'dark' ? theme.primary : '#FFFFFF'}
               />
+
+
             </View>
+
 
             {/* Color Options */}
             <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>ACCENT COLOR</Text>

@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { checkSubscription } from '../services/purchases';
-import { Theme, ThemeColor, ThemeMode, buildTheme, themeColors } from './themes';
+import { Theme, ThemeColor, ThemeMode, ThemeModePreference, buildTheme, themeColors } from './themes';
 
 interface ThemeContextType {
   theme: Theme;
   themeColor: ThemeColor;
-  themeMode: ThemeMode;
+  themeMode: ThemeModePreference;
+  resolvedMode: ThemeMode;
   isPremium: boolean;
   setThemeColor: (color: ThemeColor) => void;
-  setThemeMode: (mode: ThemeMode) => void;
-  toggleDarkMode: () => void;
+  setThemeMode: (mode: ThemeModePreference) => void;
+  toggleDarkMode: () => void; // overrides system if currently system
   refreshPremiumStatus: () => Promise<void>;
 }
 
@@ -20,12 +22,19 @@ const THEME_COLOR_KEY = '@theme_color';
 const THEME_MODE_KEY = '@theme_mode';
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+  const systemScheme = useColorScheme(); // 'light' | 'dark' | null
+
   const [themeColor, setThemeColorState] = useState<ThemeColor>('rose');
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
+  const [themeMode, setThemeModeState] = useState<ThemeModePreference>('system');
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load saved preferences and check premium status on mount
+  const effectiveMode: ThemeMode =
+  themeMode === 'system'
+    ? (systemScheme === 'dark' ? 'dark' : 'light')
+    : themeMode;
+
+
   useEffect(() => {
     loadPreferences();
     checkPremiumStatus();
@@ -42,7 +51,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         setThemeColorState(savedColor as ThemeColor);
       }
 
-      if (savedMode && (savedMode === 'light' || savedMode === 'dark')) {
+      if (savedMode && (savedMode === 'light' || savedMode === 'dark' || savedMode === 'system')) {
         setThemeModeState(savedMode as ThemeMode);
       }
     } catch (error) {
@@ -72,21 +81,19 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const setThemeColor = async (color: ThemeColor) => {
     const colorData = themeColors[color];
-    
+
     if (!colorData) {
       console.error('Invalid theme color:', color);
       return;
     }
-    
-    // Check premium status for premium themes
+
     if (colorData.premium && !isPremium) {
       console.warn('Premium theme requires subscription');
       return;
     }
-    
+
     setThemeColorState(color);
-    
-    // Save to storage
+
     try {
       await AsyncStorage.setItem(THEME_COLOR_KEY, color);
     } catch (error) {
@@ -94,28 +101,25 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const setThemeMode = async (mode: ThemeMode) => {
-    setThemeModeState(mode);
-    
-    // Save to storage
-    try {
-      await AsyncStorage.setItem(THEME_MODE_KEY, mode);
-    } catch (error) {
-      console.error('Error saving theme mode:', error);
-    }
-  };
-
-  const toggleDarkMode = () => {
-    const newMode = themeMode === 'light' ? 'dark' : 'light';
-    setThemeMode(newMode);
-  };
-
-  const theme = buildTheme(themeColor, themeMode);
-
-  // Show loading state briefly to avoid flash of wrong theme
-  if (isLoading) {
-    return null;
+  const setThemeMode = async (mode: ThemeModePreference) => {
+  setThemeModeState(mode);
+  try {
+    await AsyncStorage.setItem(THEME_MODE_KEY, mode);
+  } catch (error) {
+    console.error('Error saving theme mode:', error);
   }
+};
+
+  // ✅ If user taps toggle while in system mode, it becomes a manual override
+  const toggleDarkMode = () => {
+    const next: ThemeMode = effectiveMode === 'dark' ? 'light' : 'dark';
+    setThemeMode(next);
+    AsyncStorage.setItem(THEME_MODE_KEY, next).catch(() => {});
+  };
+
+  const theme = buildTheme(themeColor, effectiveMode);
+
+  if (isLoading) return null;
 
   return (
     <ThemeContext.Provider
@@ -123,6 +127,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         theme,
         themeColor,
         themeMode,
+        resolvedMode: effectiveMode,
         isPremium,
         setThemeColor,
         setThemeMode,
@@ -137,8 +142,6 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+  if (!context) throw new Error('useTheme must be used within a ThemeProvider');
   return context;
 };
