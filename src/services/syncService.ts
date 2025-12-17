@@ -210,7 +210,7 @@ export const syncCloudToLocal = async (userId: string) => {
       // Clear local data first
       db.runSync('DELETE FROM incidents');
       db.runSync('DELETE FROM people');
-      db.runSync('DELETE FROM categories WHERE is_custom = 1');
+      db.runSync('DELETE FROM categories');
       db.runSync('DELETE FROM settings WHERE id = 1');
 
       console.log('🗑️ Local data cleared');
@@ -281,7 +281,7 @@ export const clearLocalData = () => {
     db.withTransactionSync(() => {
       db.runSync('DELETE FROM incidents');
       db.runSync('DELETE FROM people');
-      db.runSync('DELETE FROM categories WHERE is_custom = 1');
+      db.runSync('DELETE FROM categories');
       db.runSync('DELETE FROM settings WHERE id = 1');
     });
     

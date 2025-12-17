@@ -21,6 +21,8 @@ import { initializePurchases } from './src/services/purchases';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { initStreakTracking } from './src/services/streakService';
+import { useAuth } from './src/contexts/AuthContext';
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -205,12 +207,28 @@ function TabNavigator() {
 }
 
 function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName={user ? 'MainApp' : 'SignIn'}
+      >
+        <Stack.Screen name="SignIn" component={SignInScreen} />
+
         <Stack.Screen name="MainApp" component={TabNavigator} />
-        <Stack.Screen 
-          name="Settings" 
+
+        <Stack.Screen
+          name="Settings"
           component={SettingsStack}
           options={{ presentation: 'modal' }}
         />
@@ -218,6 +236,8 @@ function AppContent() {
     </NavigationContainer>
   );
 }
+
+
 
 export default function App() {
   const [dbInitialized, setDbInitialized] = useState(false);

@@ -77,13 +77,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(session?.user ?? null);
 
           // Handle sign-in events
+          // Handle sign-in events
           if (_event === 'SIGNED_IN' && session?.user) {
-            try {
-              await handlePostSignIn(session.user);
-            } catch (error) {
+            // Don't await - let it run in background so it doesn't block UI
+            handlePostSignIn(session.user).catch((error) => {
               console.error('Post sign-in handling error:', error);
               setSyncFailed(true);
-            }
+            });
           }
         }
       );
@@ -100,6 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const handlePostSignIn = async (user: User) => {
+      console.log('🔵 handlePostSignIn started for:', user.email);
     if (!user?.id) {
       throw new Error('Invalid user object');
     }
@@ -125,6 +126,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
     }
 
+     console.log('🔵 About to start syncUserData');
+
     // Sync data with retry logic
     try {
       await syncUserData(user.id);
@@ -142,22 +145,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const syncUserData = async (userId: string, retries = 2): Promise<void> => {
-    let lastError: any = null;
+  console.log('🟡 syncUserData called with userId:', userId);
+  let lastError: any = null;
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    console.log('🟡 Sync attempt:', attempt);
+    try {
+      if (attempt > 0) {
+        console.log(`Sync attempt ${attempt + 1}/${retries + 1}`);
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      }
+      
+      console.log('🟡 Checking for cloud data...');
+
+      // Direct query with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       try {
-        if (attempt > 0) {
-          console.log(`Sync attempt ${attempt + 1}/${retries + 1}`);
-          // Wait before retry (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-        }
-
-        // Check if user has cloud data
         const { data: cloudPeople, error: cloudError } = await supabase
           .from('people')
           .select('id')
           .eq('user_id', userId)
-          .limit(1);
+          .limit(1)
+          .abortSignal(controller.signal);
+
+        clearTimeout(timeoutId);
+        console.log('🟡 Query result:', { cloudPeople, cloudError });
 
         if (cloudError) {
           throw cloudError;
@@ -172,24 +186,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         console.log('✅ Data sync completed successfully');
-        return; // Success!
-      } catch (error: any) {
-        lastError = error;
-        console.error(`Sync attempt ${attempt + 1} failed:`, error);
-        
-        // Don't retry on certain errors
-        if (error?.message?.includes('unauthorized') || 
-            error?.code === '401' ||
-            error?.code === 'PGRST301') {
-          console.error('Auth error during sync - not retrying');
-          throw error;
+        return;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error('Query timed out after 15 seconds');
         }
+        throw err;
+      }
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Sync attempt ${attempt + 1} failed:`, error);
+      
+      if (error?.message?.includes('unauthorized') || 
+          error?.code === '401' ||
+          error?.code === 'PGRST301') {
+        console.error('Auth error during sync - not retrying');
+        throw error;
       }
     }
+  }
 
-    // All retries failed
-    throw lastError || new Error('Data sync failed after retries');
-  };
+  throw lastError || new Error('Data sync failed after retries');
+};
 
   const retrySyncData = async () => {
     if (!user?.id) {
@@ -291,7 +310,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             throw new Error('Failed to get user information');
           }
 
-          await handlePostSignIn(user);
         } catch (parseError) {
           console.error('URL parsing error:', parseError);
           throw new Error('Failed to process authentication response');
@@ -379,7 +397,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error('Failed to get user information');
       }
 
-      await handlePostSignIn(user);
     } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED' || error.code === 'ERR_CANCELED') {
         console.log('User canceled Apple sign-in');

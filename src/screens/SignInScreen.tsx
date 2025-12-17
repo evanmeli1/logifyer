@@ -15,6 +15,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+  SignIn: undefined;
+  MainApp: undefined;
+  Settings: undefined;
+};
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -89,8 +98,10 @@ FloatingShape.displayName = 'FloatingShape';
 
 export default function SignInScreen() {
   const { signInWithGoogle, signInWithApple } = useAuth();
-  const navigation = useNavigation();
+  const navigation =
+  useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
+  const background = theme.background ?? '#000';
   const [loading, setLoading] = useState<'google' | 'apple' | null>(null);
   const isMountedRef = useRef(true);
   const isProcessingRef = useRef(false);
@@ -122,7 +133,6 @@ export default function SignInScreen() {
     
     try {
       await signInWithGoogle();
-      safeNavigateBack();
     } catch (error: any) {
       console.error('Google sign in error:', error);
       
@@ -133,15 +143,15 @@ export default function SignInScreen() {
             error.message?.includes('cancelled')) {
           // User cancelled, just clear loading
           console.log('User cancelled Google sign in');
-        } else {
-          // Actual error
-          Alert.alert('Sign In Failed', error.message || 'Failed to sign in with Google');
+          return; // Don't navigate if cancelled
         }
+        // Note: sync errors show their own alert, no need to show another
       }
     } finally {
       isProcessingRef.current = false;
       if (isMountedRef.current) {
         setLoading(null);
+        safeNavigateBack();
       }
     }
   };
@@ -181,22 +191,31 @@ export default function SignInScreen() {
   };
 
   const handleSkip = () => {
-    safeNavigateBack();
+    if (navigation.canGoBack()) {
+      // Opened from inside the app → just close
+      navigation.goBack();
+    } else {
+      // App start → enter app
+      navigation.replace('MainApp');
+    }
   };
 
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: background }]}>
       {/* Warm Gradient Background */}
       <LinearGradient
         colors={[
           theme.primary + '15',
           theme.primaryLight + '10',
-          '#FFF5F5',
-          '#FFFFFF',
+          background,
+          background,
         ]}
         locations={[0, 0.3, 0.6, 1]}
         style={StyleSheet.absoluteFill}
       />
+
+
 
       {/* Floating Animated Shapes */}
       <View style={StyleSheet.absoluteFill}>
@@ -242,14 +261,17 @@ export default function SignInScreen() {
         />
       </View>
 
-      {/* Back Button */}
-      <TouchableOpacity 
-        style={styles.backButton}
-        onPress={handleSkip}
-        disabled={loading !== null}
-      >
-        <Text style={[styles.backArrow, { color: theme.text, opacity: loading !== null ? 0.5 : 1 }]}>←</Text>
-      </TouchableOpacity>
+      {/* Back Button (hide when SignIn is root) */}
+      {navigation.canGoBack() && (
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleSkip}
+          disabled={loading !== null}
+        >
+          <Text style={[styles.backArrow, { color: theme.text, opacity: loading !== null ? 0.5 : 1 }]}>←</Text>
+        </TouchableOpacity>
+      )}
+
 
       {/* Content */}
       <View style={styles.content}>
@@ -278,6 +300,7 @@ export default function SignInScreen() {
             ) : (
               <>
                 <Text style={styles.appleIcon}></Text>
+                <Ionicons name="logo-apple" size={20} color="#fff" />
                 <Text style={styles.appleButtonText}>Continue with Apple</Text>
               </>
             )}
@@ -285,8 +308,12 @@ export default function SignInScreen() {
 
           <TouchableOpacity 
             style={[
-              styles.googleButton, 
-              { borderColor: theme.divider, opacity: loading !== null && loading !== 'google' ? 0.5 : 1 }
+              styles.googleButton,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.divider,
+                opacity: loading !== null && loading !== 'google' ? 0.5 : 1,
+              },
             ]}
             onPress={handleGoogleSignIn}
             disabled={loading !== null}
@@ -328,7 +355,7 @@ export default function SignInScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.disclaimer, { color: theme.textMuted }]}>
-          By continuing, you agree to our{' '}
+          Continue to agree to our{' '}
           <Text style={{ color: theme.primary }}>Terms</Text>
           {' '}and{' '}
           <Text style={{ color: theme.primary }}>Privacy Policy</Text>
@@ -344,12 +371,12 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 54,
+    top: 40,
     left: 20,
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -414,7 +441,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     height: 56,
     borderRadius: 16,
     borderWidth: 1.5,
