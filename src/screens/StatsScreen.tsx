@@ -394,7 +394,7 @@ export default function StatsScreen() {
 
         {/* Feelings */}
         <Animated.View entering={FadeInDown.delay(350).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Feelings</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>Mood</Text>
 
           <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
             Last 7 days

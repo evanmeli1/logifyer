@@ -247,10 +247,10 @@ export default function LegalScreen() {
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.textMuted }]}>
-            © 2024 Logifyer. All rights reserved.
+            © 2025 Logifyer. All rights reserved.
           </Text>
           <Text style={[styles.footerSubtext, { color: theme.textMuted }]}>
-            Last updated: November 2024
+            Last updated: December 2025
           </Text>
         </View>
       </ScrollView>

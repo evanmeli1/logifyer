@@ -219,7 +219,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.settingInfo}>
                 <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>⭐ Upgrade to Premium</Text>
-                <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Unlock AI insights & unlimited categories</Text>
+                <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Unlock AI insights & custom categories</Text>
               </View>
               <Text style={[styles.settingArrow, { color: theme.primary }]}>›</Text>
             </TouchableOpacity>
@@ -271,7 +271,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingInfo}>
               <Text style={[styles.settingTitle, { color: theme.text }]}>Recency Boost</Text>
-              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Recent incidents count 1.5x</Text>
+              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Last 7 days count 1.5x more</Text>
             </View>
             <Text style={[styles.settingValue, { color: theme.textMuted }]}>
               {recencyBoostEnabled ? 'On' : 'Off'}
@@ -293,7 +293,7 @@ export default function SettingsScreen() {
                   Manage Custom Categories
                 </Text>
                 <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>
-                  Add, edit, or delete custom categories
+                  Add, edit or delete custom categories
                 </Text>
               </View>
               <Text style={[styles.settingArrow, { color: theme.textMuted }]}>›</Text>

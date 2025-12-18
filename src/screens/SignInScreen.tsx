@@ -122,7 +122,7 @@ export default function SignInScreen() {
       if (navigation.canGoBack()) {
         navigation.goBack();
       } else {
-        (navigation as any).navigate('Home');
+        (navigation as any).navigate('MainApp');
       }
     }
   };
@@ -364,12 +364,18 @@ export default function SignInScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <Text style={[styles.disclaimer, { color: theme.textMuted }]}>
-          Continue to agree to our{' '}
-          <Text style={{ color: theme.primary }}>Terms</Text>
-          {' '}and{' '}
-          <Text style={{ color: theme.primary }}>Privacy Policy</Text>
-        </Text>
+        <View style={styles.disclaimerContainer}>
+          <Text style={[styles.disclaimer, { color: theme.textMuted }]}>
+            By continuing, you agree to our{' '}
+          </Text>
+          <TouchableOpacity onPress={() => (navigation as any).navigate('Settings', { screen: 'Legal', params: { section: 'terms' } })}>
+            <Text style={[styles.disclaimerLink, { color: theme.primary }]}>Terms</Text>
+          </TouchableOpacity>
+          <Text style={[styles.disclaimer, { color: theme.textMuted }]}> and </Text>
+          <TouchableOpacity onPress={() => (navigation as any).navigate('Settings', { screen: 'Legal', params: { section: 'privacy' } })}>
+            <Text style={[styles.disclaimerLink, { color: theme.primary }]}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -501,5 +507,16 @@ const styles = StyleSheet.create({
   fontFamily: 'Poppins_400Regular', 
   textAlign: 'center',
   lineHeight: 20,
+},
+disclaimerContainer: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+disclaimerLink: {
+  fontSize: 13,
+  fontFamily: 'Poppins_400Regular',
+  textDecorationLine: 'underline',
 },
 });
