@@ -22,6 +22,8 @@ import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { initStreakTracking } from './src/services/streakService';
 import { useAuth } from './src/contexts/AuthContext';
+import { Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+
 
 
 const Tab = createBottomTabNavigator();
@@ -221,10 +223,13 @@ function AppContent() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName={user ? 'MainApp' : 'SignIn'}
+        initialRouteName="SignIn"
       >
-        <Stack.Screen name="SignIn" component={SignInScreen} />
-
+        <Stack.Screen 
+          name="SignIn" 
+          component={SignInScreen}
+          initialParams={{ isInitialLaunch: !user }}
+        />
         <Stack.Screen name="MainApp" component={TabNavigator} />
 
         <Stack.Screen
@@ -248,6 +253,9 @@ export default function App() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Poppins_400Regular,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
   });
 
   useEffect(() => {

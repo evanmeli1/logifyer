@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Dimensions, Image } from 'react-native';
 import Animated, { 
   FadeInDown, 
   useAnimatedStyle, 
@@ -13,13 +13,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+
 type RootStackParamList = {
-  SignIn: undefined;
+  SignIn: { isInitialLaunch?: boolean };
   MainApp: undefined;
   Settings: undefined;
 };
@@ -100,6 +101,8 @@ export default function SignInScreen() {
   const { signInWithGoogle, signInWithApple } = useAuth();
   const navigation =
   useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'SignIn'>>();
+  const isInitialLaunch = route.params?.isInitialLaunch;
   const { theme } = useTheme();
   const background = theme.background ?? '#000';
   const [loading, setLoading] = useState<'google' | 'apple' | null>(null);
@@ -279,6 +282,13 @@ export default function SignInScreen() {
           entering={FadeInDown.delay(100).duration(500)}
           style={styles.topSection}
         >
+          {isInitialLaunch && (
+            <Image 
+              source={require('../../assets/icon.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          )}
           <Text style={[styles.title, { color: theme.text }]}>Welcome</Text>
           <Text style={[styles.subtitle, { color: theme.textMuted }]}>
             Sign in to sync your data across{'\n'}devices and unlock premium features
@@ -299,7 +309,6 @@ export default function SignInScreen() {
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <>
-                <Text style={styles.appleIcon}></Text>
                 <Ionicons name="logo-apple" size={20} color="#fff" />
                 <Text style={styles.appleButtonText}>Continue with Apple</Text>
               </>
@@ -323,9 +332,10 @@ export default function SignInScreen() {
               <ActivityIndicator color={theme.text} />
             ) : (
               <>
-                <View style={styles.googleIcon}>
-                  <Text style={styles.googleG}>G</Text>
-                </View>
+                <Image 
+                  source={require('../../assets/google-logo.png')} 
+                  style={{width: 20, height: 27, marginLeft: 12}} 
+                />
                 <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
               </>
             )}
@@ -398,19 +408,25 @@ const styles = StyleSheet.create({
   topSection: {
     alignItems: 'center',
     marginBottom: 48,
+    marginTop: -50,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 34,
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
+  fontSize: 34,
+  fontFamily: 'Poppins_700Bold', // <-- change this
+  marginBottom: 12,
+  letterSpacing: -0.5,
+},
   subtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
+  fontSize: 16,
+  fontFamily: 'Poppins_400Regular', // <-- change from Inter_400Regular
+  textAlign: 'center',
+  lineHeight: 24,
+},
   buttonSection: {
     gap: 14,
   },
@@ -452,19 +468,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#4285F4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleG: {
-    fontSize: 14,
-    fontFamily: 'Inter_700Bold',
-    color: '#FFFFFF',
-  },
   googleButtonText: {
     fontSize: 17,
     fontFamily: 'Inter_600SemiBold',
@@ -494,9 +497,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   disclaimer: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  fontSize: 13,
+  fontFamily: 'Poppins_400Regular', // <-- change from Inter_400Regular
+  textAlign: 'center',
+  lineHeight: 20,
+},
 });
