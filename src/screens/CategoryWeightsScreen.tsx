@@ -278,20 +278,20 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 22,
     color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   headerCenter: {
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 18,
   },
   scrollView: {
@@ -347,12 +347,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     flex: 1,
   },
   sectionCount: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     backgroundColor: 'rgba(0,0,0,0.05)',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   customBadge: {
     alignSelf: 'flex-start',
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   },
   customBadgeText: {
     fontSize: 10,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   valueContainer: {
     paddingHorizontal: 14,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   categoryValue: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   sliderContainer: {
     marginTop: 2,
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   footer: {
     flexDirection: 'row',
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   },
   resetButtonText: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   saveButton: {
     flex: 2,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
 });

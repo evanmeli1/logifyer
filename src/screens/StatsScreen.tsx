@@ -257,7 +257,7 @@ export default function StatsScreen() {
                   <Text
                     style={{
                       fontSize: 12,
-                      fontFamily: 'Inter_700Bold',
+                      fontFamily: 'Poppins_700Bold',
                       color: '#111827',
                     }}
                   >
@@ -265,7 +265,7 @@ export default function StatsScreen() {
                   </Text>
                 </LinearGradient>
 
-                <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textMuted }}>
+                <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.textMuted }}>
                   {x.count} ({pct}%)
                 </Text>
               </View>
@@ -299,7 +299,7 @@ export default function StatsScreen() {
             activeOpacity={0.8}
             style={{ alignSelf: 'flex-start', marginTop: 2 }}
           >
-            <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.primary }}>
+            <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.primary }}>
               {showAllFeelings ? 'Show less' : `Show all (${sorted.length})`}
             </Text>
           </TouchableOpacity>
@@ -396,7 +396,7 @@ export default function StatsScreen() {
         <Animated.View entering={FadeInDown.delay(350).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Feelings</Text>
 
-          <Text style={{ fontFamily: 'Inter_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
+          <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
             Last 7 days
           </Text>
           {renderFeelingBars(feelingsWeek)}
@@ -634,13 +634,13 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 32,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   settingsButton: {
     width: 40,
@@ -683,12 +683,12 @@ const styles = StyleSheet.create({
   },
   heroNumber: {
     fontSize: 38,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   heroLabel: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 16,
   },
   overallHealth: {
@@ -721,11 +721,11 @@ const styles = StyleSheet.create({
   },
   gradeLetter: {
     fontSize: 44,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   gradeScore: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginTop: -2,
   },
   trendBadge: {
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   activityRow: {
     flexDirection: 'row',
@@ -759,17 +759,17 @@ const styles = StyleSheet.create({
   },
   activityIcon: {
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#10B981',
   },
   activityNumber: {
     fontSize: 28,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   activityLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   activityDivider: {
     width: 1,
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
   },
   distributionGrade: {
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   distributionBarContainer: {
     flex: 1,
@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
   },
   distributionCount: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     width: 24,
     textAlign: 'right',
   },
@@ -832,11 +832,11 @@ const styles = StyleSheet.create({
   proBadgeSmallText: {
     color: '#FFF',
     fontSize: 9,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   cacheIndicator: {
     fontSize: 11,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 4,
   },
   generateButton: {
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
   generateButtonText: {
     color: '#FFF',
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   aiContent: {
     gap: 12,
@@ -858,12 +858,12 @@ const styles = StyleSheet.create({
   },
   aiSectionTitle: {
     fontSize: 13,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 6,
   },
   aiSectionText: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 20,
   },
   patternRow: {
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
   patternText: {
     flex: 1,
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 20,
   },
   aiRow: {
@@ -897,12 +897,12 @@ const styles = StyleSheet.create({
   },
   aiMiniLabel: {
     fontSize: 11,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
   },
   aiMiniText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
     lineHeight: 16,
   },
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
   },
   regenerateButtonText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   // Locked state styles
   lockedOverlay: {
@@ -933,12 +933,12 @@ const styles = StyleSheet.create({
   },
   lockedTitle: {
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
   },
   lockedSubtitle: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginBottom: 14,
   },
   upgradeButton: {
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
   upgradeText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   themeCard: {
     flexDirection: 'row',
@@ -970,11 +970,11 @@ const styles = StyleSheet.create({
   themeInfo: {},
   themeTitle: {
     fontSize: 15,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   themeSubtitle: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginTop: 2,
   },
   colorDots: {
@@ -993,7 +993,7 @@ const styles = StyleSheet.create({
   },
   themeArrow: {
     fontSize: 18,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   allTimeToggleRow: {
   flexDirection: 'row',
@@ -1002,7 +1002,7 @@ const styles = StyleSheet.create({
   marginBottom: 10,
 },
 sectionLabel: {
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
   fontSize: 13,
 },
 tinyPill: {
@@ -1015,7 +1015,7 @@ tinyPill: {
   gap: 6,
 },
 tinyPillText: {
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
   fontSize: 12,
 },
 tinyChevron: {

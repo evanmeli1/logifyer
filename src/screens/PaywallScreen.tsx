@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   header: {
     paddingTop: 30,
@@ -575,14 +575,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 32,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     marginBottom: 4,
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: 'rgba(255,255,255,0.85)',
   },
   closeButton: {
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
   },
   closeText: {
     fontSize: 18,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   scrollView: {
@@ -641,12 +641,12 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 2,
   },
   featureDescription: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 18,
   },
   checkCircle: {
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   guaranteeSection: {
     marginBottom: 10,
@@ -678,12 +678,12 @@ const styles = StyleSheet.create({
   },
   guaranteeTitle: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 2,
   },
   guaranteeDescription: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   bottomSection: {
     padding: 20,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
   },
   purchaseText: {
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
   bottomLinks: {
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   linkDivider: {
     fontSize: 10,

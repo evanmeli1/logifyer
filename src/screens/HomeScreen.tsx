@@ -595,7 +595,7 @@ export default function HomeScreen() {
           </Text>
 
           <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
-            Track relationship health, trends, and more.
+            See how daily interactions shape your relationship health.
           </Text>
 
           <TouchableOpacity
@@ -843,7 +843,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 34,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     marginBottom: 6,
     letterSpacing: -0.5,
@@ -851,11 +851,11 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.85)',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   limitWarning: {
     color: '#FCD34D',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   settingsButton: {
     width: 40,
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   newLogButtonText: {
     color: '#FFF',
     fontSize: 15,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
 
@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
   },
   dashboardTitle: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
   dashboardLogBtn: {
@@ -915,7 +915,7 @@ const styles = StyleSheet.create({
   dashboardLogBtnText: {
     color: '#FFF',
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
   dashboardCards: {
@@ -930,12 +930,12 @@ const styles = StyleSheet.create({
   },
   dashCardLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 6,
   },
   dashCardValue: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
 
@@ -954,11 +954,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   sortButtonText: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   sortArrow: {
     fontSize: 10,
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
   },
   sortOptionText: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
 
   listContent: {
@@ -1035,13 +1035,13 @@ const styles = StyleSheet.create({
   },
   ringGrade: {
     fontSize: 22,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.5,
   },
   ringScore: {
     fontSize: 13,
     marginTop: -1,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 
   personInfo: { flex: 1 },
@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
   },
   personName: {
     fontSize: 20,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.3,
     flex: 1,
   },
@@ -1067,7 +1067,7 @@ const styles = StyleSheet.create({
   },
   relationshipType: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   trendContainer: {
     flexDirection: 'row',
@@ -1077,7 +1077,7 @@ const styles = StyleSheet.create({
   trendArrow: { fontSize: 16 },
   trendText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
 
   emptyContainer: {
@@ -1095,14 +1095,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 22,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 6,
     textAlign: 'center',
     letterSpacing: -0.3,
   },
   emptySubtitle: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
     marginBottom: 26,
     lineHeight: 22,
@@ -1127,7 +1127,7 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.3,
   },
 
@@ -1141,7 +1141,7 @@ const styles = StyleSheet.create({
   },
   emptySearchText: {
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
   },
 
@@ -1170,7 +1170,7 @@ const styles = StyleSheet.create({
   fabText: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
 
   // NEW: Balloon picker sheet
@@ -1201,13 +1201,13 @@ const styles = StyleSheet.create({
   sheetHeader: { marginBottom: 14 },
   sheetTitle: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
   sheetSubtitle: {
     marginTop: 4,
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   balloonRow: {
     flexDirection: 'row',
@@ -1230,13 +1230,13 @@ const styles = StyleSheet.create({
   balloonTitle: {
     color: '#111827',
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   balloonSubtitle: {
     color: 'rgba(17,24,39,0.75)',
     fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     lineHeight: 16,
   },
   sheetCancel: {
@@ -1248,7 +1248,7 @@ const styles = StyleSheet.create({
   },
   sheetCancelText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   dashboardTopRight: {
   flexDirection: 'row',
@@ -1267,7 +1267,7 @@ dashboardStreakEmoji: { fontSize: 14 },
 dashboardStreakText: {
   marginLeft: 6,
   fontSize: 14,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
   letterSpacing: -0.2,
 },
 controlsPill: {
@@ -1291,7 +1291,7 @@ sortPillBtn: {
 },
 sortPillText: {
   fontSize: 14,
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
 },
 
 

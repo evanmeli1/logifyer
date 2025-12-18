@@ -216,11 +216,11 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 24,
     color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -265,12 +265,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   cardDescription: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   valueDisplay: {
     alignItems: 'center',
@@ -280,11 +280,11 @@ const styles = StyleSheet.create({
   },
   valueText: {
     fontSize: 36,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   valueLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     marginTop: -2,
   },
   sliderContainer: {
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   optionGroup: {
     flexDirection: 'row',
@@ -317,12 +317,12 @@ const styles = StyleSheet.create({
   },
   optionLabel: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   optionSublabel: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   selectedDot: {
     position: 'absolute',
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 20,
   },
   footer: {
@@ -392,6 +392,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
 });

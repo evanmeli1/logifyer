@@ -282,12 +282,12 @@ const styles = StyleSheet.create({
   },
   backArrow: {
     fontSize: 22,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   scrollView: {
     flex: 1,
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   introText: {
     flex: 1,
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 20,
   },
   summaryCard: {
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 14,
   },
   summaryList: {
@@ -373,13 +373,13 @@ const styles = StyleSheet.create({
   },
   summaryCheckText: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#10B981',
   },
   summaryItemText: {
     flex: 1,
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   section: {
     borderRadius: 16,
@@ -406,16 +406,16 @@ const styles = StyleSheet.create({
   },
   sectionNumberText: {
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   sectionTitle: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   sectionContent: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 22,
   },
   contactCard: {
@@ -442,12 +442,12 @@ const styles = StyleSheet.create({
   },
   contactTitle: {
     fontSize: 22,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 8,
   },
   contactDescription: {
     fontSize: 15,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   },
   emailText: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   faqSection: {
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
   },
   faqTitle: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 16,
   },
   faqItem: {
@@ -492,12 +492,12 @@ const styles = StyleSheet.create({
   },
   faqQuestion: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 6,
   },
   faqAnswer: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 20,
   },
   responseCard: {
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   responseText: {
     fontSize: 14,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   footer: {
     alignItems: 'center',
@@ -523,10 +523,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   footerSubtext: {
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
 });

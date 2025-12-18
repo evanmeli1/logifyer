@@ -582,11 +582,11 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 24,
     color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerTitle: {
     fontSize: 24,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   limitBannerText: {
     flex: 1,
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#92400E',
   },
   previewCard: {
@@ -640,11 +640,11 @@ const styles = StyleSheet.create({
   },
   previewAvatarText: {
     fontSize: 36,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   previewName: {
     fontSize: 24,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 12,
     letterSpacing: -0.5,
   },
@@ -661,7 +661,7 @@ const styles = StyleSheet.create({
   },
   previewBadgeText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   section: {
     marginTop: 16,
@@ -682,20 +682,20 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
   },
   charCount: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   errorText: {
     fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   customCount: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     paddingVertical: 14,
     paddingHorizontal: 12,
   },
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   // Horizontal Chips
   chipsContainer: {
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   customBadge: {
     width: 18,
@@ -779,11 +779,11 @@ const styles = StyleSheet.create({
   },
   addButtonPlus: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   addButtonText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   proBadge: {
     paddingHorizontal: 6,
@@ -794,11 +794,11 @@ const styles = StyleSheet.create({
   proBadgeText: {
     color: '#FFF',
     fontSize: 9,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   hint: {
     fontSize: 11,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 12,
     textAlign: 'center',
   },
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
   tipsText: {
     flex: 1,
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     lineHeight: 20,
   },
   saveButton: {
@@ -840,7 +840,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.3,
   },
   // Modal Styles
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   modalClose: {
     fontSize: 24,
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
   },
   modalLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
     marginBottom: 10,
   },
@@ -887,7 +887,7 @@ const styles = StyleSheet.create({
   },
   modalCharCount: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   emojiScrollView: {
     maxHeight: 50,
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   modalInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     paddingVertical: 14,
   },
   modalPreview: {
@@ -934,7 +934,7 @@ const styles = StyleSheet.create({
   },
   modalPreviewLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   previewChip: {
     flexDirection: 'row',
@@ -950,7 +950,7 @@ const styles = StyleSheet.create({
   previewChipText: {
     color: '#FFF',
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   modalSaveButton: {
     marginTop: 20,
@@ -964,6 +964,6 @@ const styles = StyleSheet.create({
   modalSaveText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
 });

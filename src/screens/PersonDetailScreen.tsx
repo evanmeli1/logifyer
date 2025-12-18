@@ -58,7 +58,7 @@ const FeelingChip = ({
       <Text
         style={{
           fontSize: small ? 10 : 12,
-          fontFamily: 'Inter_700Bold',
+          fontFamily: 'Poppins_700Bold',
           color: '#111827',
         }}
       >
@@ -974,7 +974,7 @@ export default function PersonDetailScreen({ route }: any) {
                   },
                 ]}
               >
-                <Text style={{ fontFamily: 'Inter_700Bold', color: active ? '#FFF' : theme.text }}>
+                <Text style={{ fontFamily: 'Poppins_700Bold', color: active ? '#FFF' : theme.text }}>
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -1204,7 +1204,7 @@ const styles = StyleSheet.create({
   backIcon: {
     fontSize: 22,
     color: '#FFF',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   headerContent: {
     alignItems: 'center',
@@ -1231,7 +1231,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 36,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFF',
   },
   cameraBadge: {
@@ -1255,7 +1255,7 @@ const styles = StyleSheet.create({
   },
   personName: {
     fontSize: 24,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFF',
     marginBottom: 16,
   },
@@ -1274,7 +1274,7 @@ const styles = StyleSheet.create({
   },
   relationshipType: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFF',
   },
   scoreCard: {
@@ -1301,11 +1301,11 @@ const styles = StyleSheet.create({
   },
   scoreNumber: {
     fontSize: 32,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   scoreSectionLabel: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#6B7280',
     marginTop: 2,
     textTransform: 'uppercase',
@@ -1320,12 +1320,12 @@ const styles = StyleSheet.create({
   },
   gradeText: {
     color: '#FFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     fontSize: 18,
   },
   scoreLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
   },
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
   menuButtonText: {
     fontSize: 20,
     color: '#FFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   menuOverlayBg: {
     ...StyleSheet.absoluteFillObject,
@@ -1396,12 +1396,12 @@ const styles = StyleSheet.create({
   },
   floatingMenuText: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     flex: 1,
   },
   menuItemArrow: {
     fontSize: 20,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   modalOverlay: {
     flex: 1,
@@ -1417,7 +1417,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   editSheet: {
     borderTopLeftRadius: 24,
@@ -1455,7 +1455,7 @@ const styles = StyleSheet.create({
   },
   editAvatarText: {
     fontSize: 32,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   editCameraBadge: {
     position: 'absolute',
@@ -1480,7 +1480,7 @@ const styles = StyleSheet.create({
   },
   tapToChangeText: {
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -1494,25 +1494,25 @@ const styles = StyleSheet.create({
   },
   editLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
     flex: 1,
   },
   errorText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#EF4444',
     marginRight: 8,
   },
   charCount: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   editInput: {
     padding: 14,
     borderRadius: 12,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     borderWidth: 1.5,
   },
   chipsContainer: {
@@ -1533,12 +1533,12 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   chipCheck: {
     fontSize: 12,
     color: '#FFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   saveButton: {
     borderRadius: 14,
@@ -1552,7 +1552,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   statsBar: {
     flexDirection: 'row',
@@ -1578,12 +1578,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 22,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   listContent: {
     padding: 20,
@@ -1606,7 +1606,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     flex: 1,
   },
   patternsList: {},
@@ -1619,14 +1619,14 @@ const styles = StyleSheet.create({
 
     patternLabel: {
   fontSize: 14,
-  fontFamily: 'Inter_400Regular',
+  fontFamily: 'Poppins_400Regular',
   width: 120,        // ✅ lock the left column width (tweak 110–140)
   flexShrink: 0,
 },
 
 patternValue: {
   fontSize: 14,
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
   textAlign: 'right',
   flex: 1,
   minWidth: 0,
@@ -1635,7 +1635,7 @@ patternValue: {
 
   emptyPatterns: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
     paddingVertical: 16,
   },
@@ -1646,7 +1646,7 @@ patternValue: {
   },
   premiumBadgeText: {
     fontSize: 10,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   generateButton: {
     padding: 14,
@@ -1656,7 +1656,7 @@ patternValue: {
   generateButtonText: {
     color: '#FFF',
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   insightsBox: {
     padding: 14,
@@ -1668,11 +1668,11 @@ patternValue: {
   },
   insightsTimestamp: {
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   insightsText: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     lineHeight: 22,
     marginBottom: 12,
   },
@@ -1681,11 +1681,11 @@ patternValue: {
   },
   regenerateButtonText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   incidentsHeader: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 12,
     marginTop: 8,
   },
@@ -1715,7 +1715,7 @@ patternValue: {
   checkmark: {
     color: '#FFF',
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   incidentContent: {
     flex: 1,
@@ -1747,12 +1747,12 @@ patternValue: {
   },
   incidentName: {
   fontSize: 15,
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
   flexShrink: 1,
 },
   incidentTime: {
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   pointsContainer: {
     alignItems: 'flex-end',
@@ -1767,15 +1767,15 @@ patternValue: {
   majorBadgeText: {
     color: '#FFF',
     fontSize: 9,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   incidentPoints: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   incidentNote: {
     fontSize: 13,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
@@ -1791,12 +1791,12 @@ patternValue: {
   },
   emptyText: {
     fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 4,
   },
   emptySubtext: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   selectionToolbar: {
     position: 'absolute',
@@ -1820,16 +1820,16 @@ patternValue: {
   },
   toolbarButtonText: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   deleteButtonText: {
     color: '#FFF',
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   selectedCount: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   fab: {
     position: 'absolute',
@@ -1861,7 +1861,7 @@ patternValue: {
   },
   showingText: {
     fontSize: 13,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   viewMoreButton: {
     paddingHorizontal: 20,
@@ -1870,7 +1870,7 @@ patternValue: {
   },
   viewMoreText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   titleRow: {
   flexDirection: 'row',
@@ -1916,18 +1916,18 @@ filterHeaderActions: {
 
 filterTitle: {
   fontSize: 18,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
 },
 
 filterSubtitle: {
   marginTop: 4,
   fontSize: 12,
-  fontFamily: 'Inter_400Regular',
+  fontFamily: 'Poppins_400Regular',
 },
 
 filterClearText: {
   fontSize: 14,
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
 },
 
 iconButton: {
@@ -1940,7 +1940,7 @@ iconButton: {
 
 iconButtonText: {
   fontSize: 16,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
 },
 
 filterSectionCard: {
@@ -1952,7 +1952,7 @@ filterSectionCard: {
 
 filterSectionLabel: {
   fontSize: 12,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
   letterSpacing: 1,
 },
 
@@ -1987,7 +1987,7 @@ filterHint: {
   textAlign: 'center',
   marginTop: 14,
   fontSize: 12,
-  fontFamily: 'Inter_400Regular',
+  fontFamily: 'Poppins_400Regular',
 },
 recentHeaderRow: {
   flexDirection: 'row',
@@ -2001,7 +2001,7 @@ recentHeaderRow: {
 
 recentHeaderTitle: {
   fontSize: 16,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
   flex: 1,          // ✅ allows the title to take remaining space
   minWidth: 0,      // ✅ critical: allows ellipsis instead of pushing button down
   paddingRight: 10,
@@ -2019,7 +2019,7 @@ filterButton: {
 
 filterIcon: {
   fontSize: 19,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
   marginRight: 6,
   lineHeight: 35,
 
@@ -2028,7 +2028,7 @@ filterIcon: {
 filterLabel: {
   fontSize: 13,
   lineHeight: 15,
-  fontFamily: 'Inter_600SemiBold',
+  fontFamily: 'Poppins_600SemiBold',
 },
 
 filterBadge: {
@@ -2044,7 +2044,7 @@ filterBadge: {
 filterBadgeText: {
   color: '#FFF',
   fontSize: 11,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
 },
 filterFeelingChip: {
   height: 36,
@@ -2056,9 +2056,7 @@ filterFeelingChip: {
 },
 filterFeelingText: {
   fontSize: 12,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
   lineHeight: 14,
 },
-
-
 });

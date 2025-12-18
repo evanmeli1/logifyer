@@ -458,7 +458,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme, existingCategories }
                 <Text style={[
                   styles.typeButtonText,
                   { color: theme.textMuted },
-                  !isPositive && { color: '#EF4444', fontFamily: 'Inter_700Bold' }
+                  !isPositive && { color: '#EF4444', fontFamily: 'Poppins_700Bold' }
                 ]}>
                   Negative
                 </Text>
@@ -475,7 +475,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme, existingCategories }
                 <Text style={[
                   styles.typeButtonText,
                   { color: theme.textMuted },
-                  isPositive && { color: '#10B981', fontFamily: 'Inter_700Bold' }
+                  isPositive && { color: '#10B981', fontFamily: 'Poppins_700Bold' }
                 ]}>
                   Positive
                 </Text>
@@ -794,7 +794,7 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                   <Text style={[
                     styles.editTypeToggleText,
                     { color: theme.textMuted },
-                    !isPositive && { color: '#EF4444', fontFamily: 'Inter_700Bold' }
+                    !isPositive && { color: '#EF4444', fontFamily: 'Poppins_700Bold' }
                   ]}>
                     👎
                   </Text>
@@ -810,7 +810,7 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                   <Text style={[
                     styles.editTypeToggleText,
                     { color: theme.textMuted },
-                    isPositive && { color: '#10B981', fontFamily: 'Inter_700Bold' }
+                    isPositive && { color: '#10B981', fontFamily: 'Poppins_700Bold' }
                   ]}>
                     👍
                   </Text>
@@ -998,11 +998,11 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 22,
     color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   headerTitle: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -1037,12 +1037,12 @@ const styles = StyleSheet.create({
   },
   usageTitle: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
   },
   usageSubtitle: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   proBadge: {
     paddingHorizontal: 12,
@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
   },
   proBadgeText: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   upgradeButton: {
     paddingHorizontal: 16,
@@ -1061,7 +1061,7 @@ const styles = StyleSheet.create({
   upgradeButtonText: {
     color: '#FFF',
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -1080,7 +1080,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 13,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     minWidth: 40,
   },
   categoryGroup: {
@@ -1088,7 +1088,7 @@ const styles = StyleSheet.create({
   },
   groupTitle: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 16,
   },
   section: {
@@ -1107,12 +1107,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
   },
   sectionCount: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   categoryCard: {
     flexDirection: 'row',
@@ -1142,12 +1142,12 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 2,
   },
   categoryPoints: {
     fontSize: 13,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   deleteButton: {
     width: 40,
@@ -1166,7 +1166,7 @@ const styles = StyleSheet.create({
   },
   editHintText: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   defaultBadge: {
     paddingHorizontal: 10,
@@ -1175,7 +1175,7 @@ const styles = StyleSheet.create({
   },
   defaultBadgeText: {
     fontSize: 11,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   emptyCard: {
     alignItems: 'center',
@@ -1196,12 +1196,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
   },
   emptySubtext: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
   },
   fab: {
@@ -1228,7 +1228,7 @@ const styles = StyleSheet.create({
   fabText: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   modalOverlay: {
     flex: 1,
@@ -1249,7 +1249,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   modalCloseButton: {
     width: 36,
@@ -1274,21 +1274,21 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
   },
   charCount: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   requiredText: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#EF4444',
   },
   errorText: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     color: '#EF4444',
     marginTop: 6,
   },
@@ -1297,7 +1297,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   emojiGrid: {
     flexDirection: 'row',
@@ -1327,7 +1327,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingHorizontal: 16,
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   emojiButton: {
     width: 48,
@@ -1358,7 +1358,7 @@ const styles = StyleSheet.create({
   },
   typeButtonText: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   pointsRow: {
     flexDirection: 'row',
@@ -1374,7 +1374,7 @@ const styles = StyleSheet.create({
   },
   pointsBtnText: {
     fontSize: 24,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   pointsInput: {
     width: 70,
@@ -1382,7 +1382,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 14,
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   pointsPreview: {
     flex: 1,
@@ -1393,7 +1393,7 @@ const styles = StyleSheet.create({
   },
   pointsPreviewText: {
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   previewCard: {
     marginTop: 24,
@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
   },
   previewLabel: {
     fontSize: 11,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
     marginBottom: 12,
   },
@@ -1423,12 +1423,12 @@ const styles = StyleSheet.create({
   },
   previewName: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 2,
   },
   previewPoints: {
     fontSize: 14,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   saveButton: {
     marginTop: 24,
@@ -1443,7 +1443,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   // Edit Modal Styles
   editModalContent: {
@@ -1461,7 +1461,7 @@ const styles = StyleSheet.create({
   },
   editModalTitle: {
     fontSize: 18,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   editHeaderRight: {
     flexDirection: 'row',
@@ -1491,7 +1491,7 @@ const styles = StyleSheet.create({
   },
   editTypeText: {
     fontSize: 12,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   editCloseBtn: {
     width: 32,
@@ -1518,12 +1518,12 @@ const styles = StyleSheet.create({
   },
   editSectionTitle: {
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 10,
   },
   editCharCount: {
     fontSize: 12,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   emojiDisplayRow: {
     flexDirection: 'row',
@@ -1547,7 +1547,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingHorizontal: 14,
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   emojiPickerBox: {
     marginTop: 10,
@@ -1574,7 +1574,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     fontSize: 15,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   editPointsRow: {
     flexDirection: 'row',
@@ -1590,7 +1590,7 @@ const styles = StyleSheet.create({
   },
   editPointsBtnText: {
     fontSize: 24,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   editPointsDisplay: {
     flex: 1,
@@ -1601,7 +1601,7 @@ const styles = StyleSheet.create({
   },
   editPointsValue: {
     fontSize: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   editActionsRow: {
     flexDirection: 'row',
@@ -1617,7 +1617,7 @@ const styles = StyleSheet.create({
   },
   editDeleteBtnText: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#EF4444',
   },
   editSaveBtn: {
@@ -1632,6 +1632,6 @@ const styles = StyleSheet.create({
   editSaveBtnText: {
     color: '#FFF',
     fontSize: 15,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
 });

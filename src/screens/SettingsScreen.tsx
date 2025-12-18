@@ -413,11 +413,11 @@ const styles = StyleSheet.create({
   backArrow: {
     fontSize: 28,
     color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   headerTitle: {
     fontSize: 24,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -462,17 +462,17 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     marginBottom: 4,
     letterSpacing: -0.2,
   },
   settingSubtitle: {
     fontSize: 14,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
   },
   settingValue: {
     fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   settingArrow: {
     fontSize: 22,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   signInButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     letterSpacing: -0.2,
   },
   aboutRow: {
@@ -510,17 +510,17 @@ const styles = StyleSheet.create({
   },
   aboutLabel: {
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   aboutValue: {
     fontSize: 16,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
   },
   premiumRow: {
     borderRadius: 0,
   },
   premiumText: {
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
   },
   premiumBadge: {
   paddingHorizontal: 12,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
 premiumBadgeText: {
   color: '#FFFFFF',
   fontSize: 12,
-  fontFamily: 'Inter_700Bold',
+  fontFamily: 'Poppins_700Bold',
   letterSpacing: 0.5,
 },
 });

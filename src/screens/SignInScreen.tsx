@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   backArrow: {
     fontSize: 24,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   content: {
     flex: 1,
@@ -417,13 +417,13 @@ const styles = StyleSheet.create({
   },
   title: {
   fontSize: 34,
-  fontFamily: 'Poppins_700Bold', // <-- change this
+  fontFamily: 'Poppins_700Bold', 
   marginBottom: 12,
   letterSpacing: -0.5,
 },
   subtitle: {
   fontSize: 16,
-  fontFamily: 'Poppins_400Regular', // <-- change from Inter_400Regular
+  fontFamily: 'Poppins_400Regular', 
   textAlign: 'center',
   lineHeight: 24,
 },
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   },
   appleButtonText: {
     fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#FFFFFF',
   },
   googleButton: {
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold',
   },
   bottomSection: {
     paddingHorizontal: 24,
@@ -493,12 +493,12 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 17,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
   },
   disclaimer: {
   fontSize: 13,
-  fontFamily: 'Poppins_400Regular', // <-- change from Inter_400Regular
+  fontFamily: 'Poppins_400Regular', 
   textAlign: 'center',
   lineHeight: 20,
 },

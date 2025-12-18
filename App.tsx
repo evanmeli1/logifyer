@@ -162,7 +162,7 @@ function TabNavigator() {
         tabBarInactiveTintColor: theme.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontFamily: 'Inter_600SemiBold',
+          fontFamily: 'Poppins_600SemiBold',
         },
         tabBarStyle: {
           height: 80,
