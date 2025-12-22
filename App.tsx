@@ -24,7 +24,13 @@ import { initStreakTracking } from './src/services/streakService';
 import { useAuth } from './src/contexts/AuthContext';
 import { Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 
-
+// Disable console logs in production
+if (!__DEV__) {
+  console.log = () => {};
+  console.debug = () => {};
+  console.info = () => {};
+  // Keep errors and warnings
+}
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -223,7 +229,7 @@ function AppContent() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
-        initialRouteName="SignIn"
+        initialRouteName={user ? 'MainApp' : 'SignIn'}
       >
         <Stack.Screen 
           name="SignIn" 

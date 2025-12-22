@@ -17,6 +17,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Linking } from 'react-native'; 
+
 
 
 type RootStackParamList = {
@@ -168,6 +170,7 @@ export default function SignInScreen() {
     
     try {
       await signInWithApple();
+      setTimeout(() => safeNavigateBack(), 1500);
       safeNavigateBack();
     } catch (error: any) {
       console.error('Apple sign in error:', error);
@@ -189,6 +192,7 @@ export default function SignInScreen() {
       isProcessingRef.current = false;
       if (isMountedRef.current) {
         setLoading(null);
+        setTimeout(() => safeNavigateBack(), 1500);
       }
     }
   };
@@ -368,11 +372,11 @@ export default function SignInScreen() {
           <Text style={[styles.disclaimer, { color: theme.textMuted }]}>
             By continuing, you agree to our{' '}
           </Text>
-          <TouchableOpacity onPress={() => (navigation as any).navigate('Settings', { screen: 'Legal', params: { section: 'terms' } })}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://evanmeli1.github.io/logifyer-legal/terms.html')}>
             <Text style={[styles.disclaimerLink, { color: theme.primary }]}>Terms</Text>
           </TouchableOpacity>
           <Text style={[styles.disclaimer, { color: theme.textMuted }]}> and </Text>
-          <TouchableOpacity onPress={() => (navigation as any).navigate('Settings', { screen: 'Legal', params: { section: 'privacy' } })}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://evanmeli1.github.io/logifyer-legal/privacy.html')}>
             <Text style={[styles.disclaimerLink, { color: theme.primary }]}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>

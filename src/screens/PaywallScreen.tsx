@@ -88,8 +88,8 @@ const FEATURES = [
   },
   { 
     icon: '📂', 
-    title: 'Unlimited Categories', 
-    description: 'Create as many custom incident types as you need',
+    title: 'Custom Categories', 
+    description: 'Add custom incident types that matter to you',
   },
   { 
     icon: '📈', 
@@ -395,7 +395,7 @@ export default function PaywallScreen({ navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Floating Animated Shapes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <FloatingShape 
@@ -551,7 +551,6 @@ export default function PaywallScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
