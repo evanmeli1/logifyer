@@ -288,7 +288,7 @@ export default function SignInScreen() {
         >
           {isInitialLaunch && (
             <Image 
-              source={require('../../assets/icon.png')} 
+              source={require('../../assets/icon1.png')} 
               style={styles.logo}
               resizeMode="contain"
             />
