@@ -46,6 +46,11 @@ export const syncLocalToCloud = async (userId: string) => {
       incidents: incidents.length,
     });
 
+    // Clear any partial data from a previous failed sync attempt so retries are idempotent
+    await supabase.from('incidents').delete().eq('user_id', userId);
+    await supabase.from('people').delete().eq('user_id', userId);
+    await supabase.from('categories').delete().eq('user_id', userId);
+
     // Map local IDs to UUIDs
     const personIdMap = new Map();
     const categoryIdMap = new Map();
@@ -64,9 +69,10 @@ export const syncLocalToCloud = async (userId: string) => {
           photo_uri: person.photo_uri,
           relationship_type: person.relationship_type,
           archived: person.archived === 1,
+          is_favorite: person.is_favorite === 1,
           created_at: person.created_at,
         });
-      
+
       if (error) {
         console.error('Error syncing person:', error);
         throw new Error(`Failed to sync person: ${person.name}`);
@@ -97,13 +103,14 @@ export const syncLocalToCloud = async (userId: string) => {
     }
 
     // Sync incidents (with mapped UUIDs)
+    let skippedIncidents = 0;
     for (const incident of incidents as any[]) {
       const uuid = generateUUID();
       const mappedPersonId = personIdMap.get(incident.person_id);
       const mappedCategoryId = categoryIdMap.get(incident.category_id);
 
       if (!mappedPersonId || !mappedCategoryId) {
-        console.warn('Skipping incident - missing mapping');
+        skippedIncidents++;
         continue;
       }
 
@@ -117,9 +124,10 @@ export const syncLocalToCloud = async (userId: string) => {
           points: incident.points,
           is_major: incident.is_major === 1,
           note: incident.note,
+          feeling_key: incident.feeling_key ?? 'calm',
           timestamp: incident.timestamp,
         });
-      
+
       if (error) {
         console.error('Error syncing incident:', error);
         throw new Error('Failed to sync incident');
@@ -143,6 +151,9 @@ export const syncLocalToCloud = async (userId: string) => {
       }
     }
 
+    if (skippedIncidents > 0) {
+      console.warn(`⚠️ Skipped ${skippedIncidents} incident(s) due to missing person/category mapping`);
+    }
     console.log('✅ Local to cloud sync complete!');
   } catch (error) {
     console.error('❌ Sync error:', error);
@@ -223,8 +234,8 @@ export const syncCloudToLocal = async (userId: string) => {
       if (cloudPeople && cloudPeople.length > 0) {
         for (const person of cloudPeople) {
           const result = db.runSync(
-            'INSERT INTO people (name, relationship_type, photo_uri, archived, created_at) VALUES (?, ?, ?, ?, ?)',
-            [person.name, person.relationship_type, person.photo_uri, person.archived ? 1 : 0, person.created_at]
+            'INSERT INTO people (name, relationship_type, photo_uri, archived, is_favorite, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [person.name, person.relationship_type, person.photo_uri, person.archived ? 1 : 0, person.is_favorite ? 1 : 0, person.created_at]
           );
           personIdMap.set(person.id, result.lastInsertRowId);
         }
@@ -249,18 +260,23 @@ export const syncCloudToLocal = async (userId: string) => {
 
           if (localPersonId && localCategoryId) {
             db.runSync(
-              'INSERT INTO incidents (person_id, category_id, points, is_major, note, timestamp) VALUES (?, ?, ?, ?, ?, ?)',
-              [localPersonId, localCategoryId, incident.points, incident.is_major ? 1 : 0, incident.note, incident.timestamp]
+              'INSERT INTO incidents (person_id, category_id, points, is_major, note, feeling_key, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [localPersonId, localCategoryId, incident.points, incident.is_major ? 1 : 0, incident.note, incident.feeling_key ?? 'calm', incident.timestamp]
             );
           }
         }
       }
 
-      // Insert settings
+      // Insert settings — always restore a row so the app has valid config
       if (cloudSettings) {
         db.runSync(
           'INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, ?, ?, ?)',
           [cloudSettings.major_multiplier, cloudSettings.time_decay_months, cloudSettings.recency_boost_enabled ? 1 : 0]
+        );
+      } else {
+        // No cloud settings — restore local defaults
+        db.runSync(
+          'INSERT INTO settings (id, major_multiplier, time_decay_months, recency_boost_enabled) VALUES (1, 3, 0, 0)'
         );
       }
     });

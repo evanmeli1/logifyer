@@ -7,7 +7,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { 
   getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson, 
   resetPersonScore, getAllRelationshipTypes, checkPersonNameExists, getDatabase,
@@ -1852,7 +1852,7 @@ patternValue: {
   fabText: {
     color: '#FFF',
     fontSize: 28,
-    fontFamily: 'Inter_300Light',
+    fontFamily: 'Inter_400Regular',
   },
   viewMoreContainer: {
     alignItems: 'center',

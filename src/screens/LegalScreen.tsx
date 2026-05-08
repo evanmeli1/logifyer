@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+
 type TabType = 'terms' | 'privacy' | 'support';
 
 export default function LegalScreen() {

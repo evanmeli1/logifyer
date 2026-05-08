@@ -239,16 +239,19 @@ export default function LogIncidentScreen({ route }: any) {
       return;
     }
     try {
-      logIncident(
-          selectedPersonId,
-          selectedCategory.id,
-          selectedCategory.default_points,
-          isMajor,
-          buildFinalNote(),
-          selectedFeelingKey || 'calm'
-        );
+      const success = logIncident(
+        selectedPersonId,
+        selectedCategory.id,
+        selectedCategory.default_points,
+        isMajor,
+        buildFinalNote(),
+        selectedFeelingKey || 'calm'
+      );
 
-
+      if (!success) {
+        Alert.alert('Error', 'Failed to log incident. Please try again.');
+        return;
+      }
 
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),

@@ -53,9 +53,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const initializeAuth = async () => {
+    // Safety timeout — if auth hangs (e.g. token refresh on slow network),
+    // unblock the UI after 10 seconds rather than showing a blank loading screen.
+    const authTimeout = setTimeout(() => {
+      if (mountedRef.current) {
+        console.warn('⚠️ Auth initialization timed out — continuing as signed out');
+        setLoading(false);
+      }
+    }, 10000);
+
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
+      clearTimeout(authTimeout);
+
       if (error) {
         console.error('Error getting session:', error);
         throw error;
@@ -91,8 +102,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       authSubscriptionRef.current = subscription;
     } catch (error) {
       console.error('Auth initialization error:', error);
-      // Don't throw - allow app to continue in signed-out state
+      // Continue in signed-out state on any error
     } finally {
+      clearTimeout(authTimeout);
       if (mountedRef.current) {
         setLoading(false);
       }

@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, ActivityIndicator, Alert } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { initDatabase, seedCategories, initSettings, initRelationshipTypes } from './src/database/db';
 import HomeScreen from './src/screens/HomeScreen';
 import AddPersonScreen from './src/screens/AddPersonScreen';
@@ -22,7 +23,10 @@ import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { initStreakTracking } from './src/services/streakService';
 import { useAuth } from './src/contexts/AuthContext';
-import { Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+
+// Keep the splash screen visible while we initialize
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Disable console logs in production
 if (!__DEV__) {
@@ -216,33 +220,35 @@ function TabNavigator() {
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const { theme } = useTheme();
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{ headerShown: false }}
-        initialRouteName={user ? 'MainApp' : 'SignIn'}
-      >
-        <Stack.Screen 
-          name="SignIn" 
-          component={SignInScreen}
-          initialParams={{ isInitialLaunch: !user }}
-        />
-        <Stack.Screen name="MainApp" component={TabNavigator} />
-
-        <Stack.Screen
-          name="Settings"
-          component={SettingsStack}
-          options={{ presentation: 'modal' }}
-        />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <>
+            <Stack.Screen name="MainApp" component={TabNavigator} />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsStack}
+              options={{ presentation: 'modal' }}
+            />
+          </>
+        ) : (
+          <Stack.Screen
+            name="SignIn"
+            component={SignInScreen}
+            initialParams={{ isInitialLaunch: true }}
+          />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -253,38 +259,39 @@ function AppContent() {
 export default function App() {
   const [dbInitialized, setDbInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  
-  const [fontsLoaded] = useFonts({
+
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
     Poppins_400Regular,
+    Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
   });
 
+  // Treat font errors as "ready" so we don't block on a bad font bundle
+  const fontsReady = fontsLoaded || !!fontError;
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize database
         initDatabase();
         initSettings();
         seedCategories();
         initRelationshipTypes();
-        console.log('Calling initStreakTracking...');
         initStreakTracking();
-        console.log('initStreakTracking completed');        console.log('✅ Database initialized');
-        
+        console.log('✅ Database initialized');
+
         // Initialize RevenueCat (non-blocking)
         try {
           await initializePurchases();
           console.log('✅ RevenueCat initialized');
         } catch (error) {
           console.log('⚠️ RevenueCat initialization failed:', error);
-          // Don't block app launch if RevenueCat fails
         }
-        
+
         setDbInitialized(true);
       } catch (error) {
         console.error('❌ App initialization error:', error);
@@ -292,11 +299,18 @@ export default function App() {
         setDbInitialized(true); // Allow UI to show error
       }
     };
-    
+
     initializeApp();
   }, []);
 
-  if (!dbInitialized || !fontsLoaded) {
+  // Hide the splash screen once both DB and fonts are ready
+  useEffect(() => {
+    if (dbInitialized && fontsReady) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [dbInitialized, fontsReady]);
+
+  if (!dbInitialized || !fontsReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
         <ActivityIndicator size="large" color="#F43F5E" />

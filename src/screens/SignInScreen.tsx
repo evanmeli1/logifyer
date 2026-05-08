@@ -130,69 +130,53 @@ export default function SignInScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    // Prevent multiple simultaneous calls
     if (isProcessingRef.current) return;
-    
+
     isProcessingRef.current = true;
     setLoading('google');
-    
+
     try {
       await signInWithGoogle();
+      if (isMountedRef.current) {
+        safeNavigateBack();
+      }
     } catch (error: any) {
       console.error('Google sign in error:', error);
-      
-      // Don't show error if user cancelled
-      if (isMountedRef.current) {
-        if (error.code === 'ERR_REQUEST_CANCELED' || 
-            error.message?.includes('cancel') ||
-            error.message?.includes('cancelled')) {
-          // User cancelled, just clear loading
-          console.log('User cancelled Google sign in');
-          return; // Don't navigate if cancelled
-        }
-        // Note: sync errors show their own alert, no need to show another
-      }
     } finally {
       isProcessingRef.current = false;
       if (isMountedRef.current) {
         setLoading(null);
-        safeNavigateBack();
       }
     }
   };
 
   const handleAppleSignIn = async () => {
-    // Prevent multiple simultaneous calls
     if (isProcessingRef.current) return;
-    
+
     isProcessingRef.current = true;
     setLoading('apple');
-    
+
     try {
       await signInWithApple();
-      setTimeout(() => safeNavigateBack(), 1500);
-      safeNavigateBack();
+      // Navigation handled by auth state listener — no manual nav needed here
     } catch (error: any) {
       console.error('Apple sign in error:', error);
-      
-      // Don't show error if user cancelled
-      if (isMountedRef.current) {
-        if (error.code === '1001' || // Apple Sign In cancelled code
-            error.code === 'ERR_REQUEST_CANCELED' ||
-            error.message?.includes('cancel') ||
-            error.message?.includes('cancelled')) {
-          // User cancelled, just clear loading
-          console.log('User cancelled Apple sign in');
-        } else {
-          // Actual error
-          Alert.alert('Sign In Failed', error.message || 'Failed to sign in with Apple');
-        }
+
+      if (!isMountedRef.current) return;
+
+      const isCancelled =
+        error.code === '1001' ||
+        error.code === 'ERR_REQUEST_CANCELED' ||
+        error.message?.includes('cancel') ||
+        error.message?.includes('cancelled');
+
+      if (!isCancelled) {
+        Alert.alert('Sign In Failed', error.message || 'Failed to sign in with Apple');
       }
     } finally {
       isProcessingRef.current = false;
       if (isMountedRef.current) {
         setLoading(null);
-        setTimeout(() => safeNavigateBack(), 1500);
       }
     }
   };

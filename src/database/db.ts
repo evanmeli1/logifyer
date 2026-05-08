@@ -347,7 +347,7 @@ export const getPersonScore = (personId: number): number => {
       const daysOld = timeDiff / (1000 * 60 * 60 * 24);
 
       // Recency boost for non-major incidents only
-      if (recencyBoostEnabled && daysOld <= 30 && incident.is_major === 0) {
+      if (recencyBoostEnabled && daysOld <= 7 && incident.is_major === 0) {
         points = points * 1.5;
       }
 
