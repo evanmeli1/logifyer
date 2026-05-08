@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text, ActivityIndicator, Alert } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import { initDatabase, seedCategories, initSettings, initRelationshipTypes } from './src/database/db';
+import { initDatabase, seedCategories, initSettings, initRelationshipTypes, getAllCategories } from './src/database/db';
 import HomeScreen from './src/screens/HomeScreen';
 import AddPersonScreen from './src/screens/AddPersonScreen';
 import PersonDetailScreen from './src/screens/PersonDetailScreen';
@@ -21,9 +21,9 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { initializePurchases } from './src/services/purchases';
 import { ThemeProvider, useTheme } from './src/theme';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { initStreakTracking } from './src/services/streakService';
 import { useAuth } from './src/contexts/AuthContext';
 import { Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { Ionicons } from '@expo/vector-icons';
 
 // Keep the splash screen visible while we initialize
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -184,33 +184,33 @@ function TabNavigator() {
         },
       }}
     >
-      <Tab.Screen 
-        name="People" 
+      <Tab.Screen
+        name="People"
         component={HomeStack}
-        options={{ 
+        options={{
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24 }}>{focused ? '👥' : '👤'}</Text>
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color} />
           ),
         }}
       />
-      <Tab.Screen 
-        name="Log" 
+      <Tab.Screen
+        name="Log"
         component={LogStack}
-        options={{ 
+        options={{
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24 }}>{focused ? '✏️' : '📝'}</Text>
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'create' : 'create-outline'} size={24} color={color} />
           ),
         }}
       />
-      <Tab.Screen 
-        name="Stats" 
+      <Tab.Screen
+        name="Stats"
         component={StatsStack}
-        options={{ 
+        options={{
           headerShown: false,
-          tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 24 }}>{focused ? '📊' : '📈'}</Text>
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -219,7 +219,7 @@ function TabNavigator() {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, guestMode } = useAuth();
   const { theme } = useTheme();
 
   if (loading) {
@@ -233,7 +233,7 @@ function AppContent() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {user || guestMode ? (
           <>
             <Stack.Screen name="MainApp" component={TabNavigator} />
             <Stack.Screen
@@ -281,7 +281,11 @@ export default function App() {
         initSettings();
         seedCategories();
         initRelationshipTypes();
-        initStreakTracking();
+        // If defaults are missing (e.g. prior seed failure), try once more
+        const cats = getAllCategories() as any[];
+        if (cats.filter((c: any) => c.is_custom === 0).length === 0) {
+          seedCategories();
+        }
         console.log('✅ Database initialized');
 
         // Initialize RevenueCat (non-blocking)

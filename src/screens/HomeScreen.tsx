@@ -1,16 +1,23 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   TextInput,
   Alert,
   Pressable,
   Image,
+  Animated as RNAnimated,
+  PanResponder,
+  Modal,
+  Keyboard,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
   FadeIn,
@@ -30,18 +37,174 @@ import {
   getPersonScore,
   toggleFavorite,
   getPersonTrend,
+  getArchivedPeople,
+  restorePerson,
 } from '../database/db';
 import { Person } from '../types';
 import { useTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
-import { useState, useCallback } from 'react';
-import { getStreakStatus } from '../services/streakService';
-import { Keyboard} from 'react-native';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 type SortOption = 'score-high' | 'score-low' | 'name' | 'recent';
+
+// Defined outside component so FlatList doesn't remount cards on every HomeScreen render
+const PersonCard = React.memo(({
+  item,
+  index,
+  isInitialMount,
+  theme,
+  navigation,
+  photoUris,
+  onToggleFavorite,
+  getHealthColor,
+  getHealthGrade,
+  getTrendDisplay,
+}: {
+  item: Person & { score: number; trend: string };
+  index: number;
+  isInitialMount: boolean;
+  theme: any;
+  navigation: any;
+  photoUris: { [id: number]: string };
+  onToggleFavorite: (id: number) => void;
+  getHealthColor: (score: number) => string;
+  getHealthGrade: (score: number) => string;
+  getTrendDisplay: (trend: string) => { arrow: string; text: string; color: string };
+}) => {
+  const scale = useSharedValue(1);
+  const trendDisplay = getTrendDisplay(item.trend);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const onPressIn = () => { scale.value = withSpring(0.97); };
+  const onPressOut = () => { scale.value = withSpring(1); };
+
+  const swipeX = useRef(new RNAnimated.Value(0)).current;
+  const panResponder = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_, g) =>
+      Math.abs(g.dx) > 8 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onPanResponderMove: (_, g) => {
+      if (g.dx < 0) swipeX.setValue(Math.max(g.dx, -90));
+    },
+    onPanResponderRelease: (_, g) => {
+      RNAnimated.spring(swipeX, { toValue: 0, useNativeDriver: false }).start();
+      if (g.dx < -65) {
+        navigation.navigate('LogIncident', { personId: item.id, showBack: true });
+      }
+    },
+    onPanResponderTerminate: () => {
+      RNAnimated.spring(swipeX, { toValue: 0, useNativeDriver: false }).start();
+    },
+  })).current;
+
+  const color = getHealthColor(item.score);
+  const grade = getHealthGrade(item.score);
+  const photoUri = photoUris[item.id];
+
+  const HealthRingDisplay = () => {
+    if (photoUri) {
+      return (
+        <View style={{ width: 63, height: 63 }}>
+          <Image
+            source={{ uri: photoUri }}
+            style={{ width: 63, height: 63, borderRadius: 31.5, borderWidth: 3, borderColor: color }}
+          />
+          <View style={[styles.ringGradeBadge, { backgroundColor: color }]}>
+            <Text style={styles.ringGradeBadgeText}>{grade}</Text>
+          </View>
+        </View>
+      );
+    }
+    const size = 63;
+    const radius = size / 2 - 8;
+    const circumference = 2 * Math.PI * radius;
+    const progress = (item.score / 100) * circumference;
+    return (
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          <Defs>
+            <SvgLinearGradient id={`hg${item.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={color} stopOpacity="1" />
+              <Stop offset="100%" stopColor={color} stopOpacity="0.6" />
+            </SvgLinearGradient>
+          </Defs>
+          <Circle cx={size/2} cy={size/2} r={radius} stroke={theme.backgroundSecondary} strokeWidth="6" fill="none" />
+          <Circle cx={size/2} cy={size/2} r={radius} stroke={`url(#hg${item.id})`} strokeWidth="6" fill="none"
+            strokeDasharray={circumference} strokeDashoffset={circumference - progress}
+            strokeLinecap="round" transform={`rotate(-90 ${size/2} ${size/2})`} />
+        </Svg>
+        <View style={styles.ringCenter}>
+          <Text style={[styles.ringGrade, { color }]}>{grade}</Text>
+          <Text style={[styles.ringScore, { color: theme.textMuted }]}>{item.score}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <Animated.View
+      entering={isInitialMount ? FadeInDown.delay(index * 100).duration(400).springify() : undefined}
+    >
+      <View style={{ overflow: 'hidden', borderRadius: 16, marginHorizontal: 20, marginBottom: 16 }}>
+        <RNAnimated.View style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0,
+          width: swipeX.interpolate({ inputRange: [-90, 0], outputRange: [90, 0], extrapolate: 'clamp' }),
+          backgroundColor: theme.primary + '20',
+          justifyContent: 'center',
+          alignItems: 'flex-end',
+          paddingRight: 14,
+        }}>
+          <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
+        </RNAnimated.View>
+        <RNAnimated.View style={{ transform: [{ translateX: swipeX }] }} {...panResponder.panHandlers}>
+          <AnimatedTouchable
+            style={[styles.personCard, animatedStyle]}
+            onPress={() => navigation.navigate('PersonDetail', { personId: item.id })}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            activeOpacity={1}
+          >
+            <View style={[styles.cardWrapper, { backgroundColor: theme.card }]}>
+              <View style={[styles.cardInner, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.cardContent}>
+                  <HealthRingDisplay />
+                  <View style={styles.personInfo}>
+                    <View style={styles.nameRow}>
+                      <Text style={[styles.personName, { color: theme.text }]} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => onToggleFavorite(item.id)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Text style={[styles.favoriteIcon, { color: theme.primary }]}>
+                          {item.is_favorite ? '★' : '☆'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[styles.relationshipBadge, { backgroundColor: theme.primary + '15' }]}>
+                      <Text style={[styles.relationshipType, { color: theme.primary }]}>
+                        {item.relationship_type}
+                      </Text>
+                    </View>
+                    <View style={styles.trendContainer}>
+                      <Text style={[styles.trendArrow, { color: trendDisplay.color }]}>{trendDisplay.arrow}</Text>
+                      <Text style={[styles.trendText, { color: trendDisplay.color }]}>{trendDisplay.text}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </AnimatedTouchable>
+        </RNAnimated.View>
+      </View>
+    </Animated.View>
+  );
+});
 
 // Limits
 const FREE_PEOPLE_LIMIT = 5;
@@ -59,77 +222,15 @@ export default function HomeScreen() {
   });
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [archivedPeople, setArchivedPeople] = useState<Person[]>([]);
+  const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [photoUris, setPhotoUris] = useState<{ [id: number]: string }>({});
 
   const isInitialMount = useRef(true);
   const isMountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [streakStatus, setStreakStatus] = useState(getStreakStatus());
-  const streakScale = useSharedValue(1);
-  const prevStreakRef = useRef(streakStatus.current);
   const [controlsPillLayout, setControlsPillLayout] = useState({ y: 0, height: 0 });
-
-
-  // NEW: Balloon picker state
-  const [showBalloonPicker, setShowBalloonPicker] = useState(false);
-
-  // NEW: Balloon options
-  const BALLOONS = [
-    {
-      key: 'calm',
-      title: 'Calm',
-      subtitle: 'Peace / Stability',
-      emoji: '🎈',
-      grad: ['#60A5FA', '#93C5FD'], // blue
-    },
-    {
-      key: 'joy',
-      title: 'Warm',
-      subtitle: 'Joy / Affection',
-      emoji: '🎈',
-      grad: ['#FBBF24', '#FDE68A'], // yellow
-    },
-    {
-      key: 'tension',
-      title: 'Sharp',
-      subtitle: 'Tension / Anger',
-      emoji: '🎈',
-      grad: ['#F87171', '#FCA5A5'], // red
-    },
-    {
-      key: 'sad',
-      title: 'Grey',
-      subtitle: 'Sadness / Isolation',
-      emoji: '🎈',
-      grad: ['#9CA3AF', '#D1D5DB'], // grey
-    },
-    {
-      key: 'connect',
-      title: 'Green',
-      subtitle: 'Trust / Clarity',
-      emoji: '🎈',
-      grad: ['#34D399', '#A7F3D0'], // green
-    },
-      { key: 'anxious', title: 'Uneasy', subtitle: 'Worried / Uncertain', emoji: '🎈',  grad: ['#A78BFA', '#C4B5FD'] },
-
-  ] as const;
-
-  const streakAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: streakScale.value }],
-  }));
-
-  useFocusEffect(
-    useCallback(() => {
-      const next = getStreakStatus();
-      setStreakStatus(next);
-
-      if (next.current !== prevStreakRef.current) {
-        streakScale.value = 1.25;
-        streakScale.value = withSpring(1, { damping: 12, stiffness: 220 });
-        prevStreakRef.current = next.current;
-      }
-    }, [])
-  );
 
   const loadPeople = useCallback(() => {
     try {
@@ -142,7 +243,19 @@ export default function HomeScreen() {
 
       if (isMountedRef.current) {
         setPeople(peopleWithScores);
+        setArchivedPeople(getArchivedPeople() as Person[]);
       }
+
+      const PHOTO_DIR = `${FileSystem.documentDirectory}photos/`;
+      Promise.all(peopleData.map(async (p) => {
+        const path = `${PHOTO_DIR}${p.id}.jpg`;
+        const info = await FileSystem.getInfoAsync(path);
+        return info.exists ? [p.id, path] : null;
+      })).then(results => {
+        const uris: { [id: number]: string } = {};
+        results.forEach(r => { if (r) uris[r[0] as number] = r[1] as string; });
+        if (isMountedRef.current) setPhotoUris(uris);
+      });
     } catch (error) {
       console.error('Error loading people:', error);
       if (isMountedRef.current) {
@@ -232,13 +345,6 @@ export default function HomeScreen() {
     (navigation as any).navigate('AddPerson');
   };
 
-  // NEW: Start log with balloon feeling
-  const handleStartLogWithFeeling = (feelingKey: string) => {
-    setShowBalloonPicker(false);
-
-    // IMPORTANT: Change 'CreateLog' to your real log screen route name
-    (navigation as any).navigate('LogIncident', { feelingKey });
-  };
 
   const getFilteredAndSortedPeople = () => {
     let filtered = people;
@@ -301,142 +407,6 @@ export default function HomeScreen() {
     }
   };
 
-  const HealthRing = ({ score, size = 80 }: { score: number; size?: number }) => {
-    const radius = size / 2 - 8;
-    const circumference = 2 * Math.PI * radius;
-    const progress = (score / 100) * circumference;
-    const color = getHealthColor(score);
-
-    return (
-      <View style={{ width: size, height: size }}>
-        <Svg width={size} height={size}>
-          <Defs>
-            <SvgLinearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={color} stopOpacity="1" />
-              <Stop offset="100%" stopColor={color} stopOpacity="0.6" />
-            </SvgLinearGradient>
-          </Defs>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={theme.backgroundSecondary}
-            strokeWidth="6"
-            fill="none"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="url(#healthGradient)"
-            strokeWidth="6"
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={circumference - progress}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        </Svg>
-        <View style={styles.ringCenter}>
-          <Text style={[styles.ringGrade, { color }]}>{getHealthGrade(score)}</Text>
-          <Text style={[styles.ringScore, { color: theme.textMuted }]}>{score}</Text>
-        </View>
-      </View>
-    );
-  };
-
-  const PersonCard = ({
-    item,
-    index,
-  }: {
-    item: Person & { score: number; trend: string };
-    index: number;
-  }) => {
-    const scale = useSharedValue(1);
-    const trendDisplay = getTrendDisplay(item.trend);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ scale: scale.value }],
-    }));
-
-    const onPressIn = () => {
-      scale.value = withSpring(0.97);
-    };
-
-    const onPressOut = () => {
-      scale.value = withSpring(1);
-    };
-
-    return (
-      <Animated.View
-        entering={
-          isInitialMount.current
-            ? FadeInDown.delay(index * 100).duration(400).springify()
-            : undefined
-        }
-      >
-        <AnimatedTouchable
-          style={[styles.personCard, animatedStyle]}
-          onPress={() =>
-            (navigation as any).navigate('PersonDetail', { personId: item.id })
-          }
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          activeOpacity={1}
-        >
-          <View style={[styles.cardWrapper, { backgroundColor: theme.card }]}>
-            <View
-              style={[
-                styles.cardInner,
-                { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-            >
-              <View style={styles.cardContent}>
-                <HealthRing score={item.score} size={68} />
-
-                <View style={styles.personInfo}>
-                  <View style={styles.nameRow}>
-                    <Text
-                      style={[styles.personName, { color: theme.text }]}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleToggleFavorite(item.id)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Text style={[styles.favoriteIcon, { color: theme.primary }]}>
-                        {item.is_favorite ? '★' : '☆'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View
-                    style={[
-                      styles.relationshipBadge,
-                      { backgroundColor: theme.primary + '15' },
-                    ]}
-                  >
-                    <Text style={[styles.relationshipType, { color: theme.primary }]}>
-                      {item.relationship_type}
-                    </Text>
-                  </View>
-                  <View style={styles.trendContainer}>
-                    <Text style={[styles.trendArrow, { color: trendDisplay.color }]}>
-                      {trendDisplay.arrow}
-                    </Text>
-                    <Text style={[styles.trendText, { color: trendDisplay.color }]}>
-                      {trendDisplay.text}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        </AnimatedTouchable>
-      </Animated.View>
-    );
-  };
 
   const getSortLabel = () => {
     switch (peopleQuery.sort) {
@@ -462,68 +432,6 @@ export default function HomeScreen() {
   const favoritesCount = people.filter(p => p.is_favorite).length;
   const atRiskCount = people.filter(p => p.score < 40).length;
 
-  // NEW: Balloon sheet UI
-  const BalloonPickerSheet = () => {
-    if (!showBalloonPicker) return null;
-
-    return (
-      <>
-        <Pressable
-          style={styles.sheetOverlay}
-          onPress={() => setShowBalloonPicker(false)}
-        />
-
-        <Animated.View
-          entering={FadeInDown.duration(220)}
-          style={[
-            styles.sheet,
-            { backgroundColor: theme.card, borderColor: theme.border },
-          ]}
-        >
-          <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: theme.text }]}>
-              How did it feel overall?
-            </Text>
-            <Text style={[styles.sheetSubtitle, { color: theme.textMuted }]}>
-              One tap. No typing.
-            </Text>
-          </View>
-
-          <View style={styles.balloonRow}>
-            {BALLOONS.map(b => (
-              <TouchableOpacity
-                key={b.key}
-                activeOpacity={0.9}
-                onPress={() => handleStartLogWithFeeling(b.key)}
-                style={styles.balloonHit}
-              >
-                <LinearGradient
-                  colors={b.grad as any}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.balloonCard}
-                >
-                  <Text style={styles.balloonEmoji}>{b.emoji}</Text>
-                  <Text style={styles.balloonTitle}>{b.title}</Text>
-                  <Text style={styles.balloonSubtitle}>{b.subtitle}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity
-            onPress={() => setShowBalloonPicker(false)}
-            style={[styles.sheetCancel, { borderColor: theme.border }]}
-            activeOpacity={0.9}
-          >
-            <Text style={[styles.sheetCancelText, { color: theme.textMuted }]}>
-              Cancel
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </>
-    );
-  };
 
   return (
     <LinearGradient
@@ -573,7 +481,7 @@ export default function HomeScreen() {
                   })
                 }
               >
-                <Text style={{ fontSize: 22, color: '#FFF' }}>☰</Text>
+                <Ionicons name="menu-outline" size={22} color="#FFF" />
               </TouchableOpacity>
             </View>
           </View>
@@ -591,11 +499,11 @@ export default function HomeScreen() {
           </Animated.View>
 
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
-            Add someone to get started
+            Track your relationships
           </Text>
 
           <Text style={[styles.emptySubtitle, { color: theme.textMuted }]}>
-            See how daily interactions shape your relationship health.
+            Log how people treat you. Logifyer tracks patterns and shows your real relationship health.
           </Text>
 
           <TouchableOpacity
@@ -613,8 +521,6 @@ export default function HomeScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Balloon picker still works even if empty */}
-          <BalloonPickerSheet />
         </Animated.View>
       ) : (
         <>
@@ -626,31 +532,6 @@ export default function HomeScreen() {
     <Text style={[styles.dashboardTitle, { color: theme.text }]}>Dashboard</Text>
   </View>
 
-  <View style={styles.dashboardTopRight}>
-    {streakStatus.current > 0 && (
-      <Animated.View style={[styles.dashboardStreakPill, streakAnimStyle]}>
-        <Text style={styles.dashboardStreakEmoji}>🔥</Text>
-        <Text style={[styles.dashboardStreakText, { color: theme.text }]}>
-          {streakStatus.current}
-        </Text>
-      </Animated.View>
-    )}
-
-    <TouchableOpacity
-      style={styles.dashboardLogBtn}
-      onPress={() => setShowBalloonPicker(true)}
-      activeOpacity={0.9}
-    >
-      <LinearGradient
-        colors={[theme.primary, theme.primaryLight]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.dashboardLogBtnGrad}
-      >
-        <Text style={styles.dashboardLogBtnText}>Quick Log</Text>
-      </LinearGradient>
-    </TouchableOpacity>
-  </View>
 </View>
 
 
@@ -685,7 +566,7 @@ export default function HomeScreen() {
                   { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
               >
-                <Text style={styles.searchIcon}>🔍</Text>
+                <Ionicons name="search-outline" size={18} color={theme.textMuted} style={{ marginLeft: 12 }} />
 
                 <TextInput
                   style={[styles.searchInput, { color: theme.text }]}
@@ -783,7 +664,20 @@ export default function HomeScreen() {
 
           <FlatList
             data={filteredPeople}
-            renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
+            renderItem={({ item, index }) => (
+              <PersonCard
+                item={item}
+                index={index}
+                isInitialMount={isInitialMount.current}
+                theme={theme}
+                navigation={navigation}
+                photoUris={photoUris}
+                onToggleFavorite={handleToggleFavorite}
+                getHealthColor={getHealthColor}
+                getHealthGrade={getHealthGrade}
+                getTrendDisplay={getTrendDisplay}
+              />
+            )}
             keyExtractor={item => item.id.toString()}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -792,7 +686,7 @@ export default function HomeScreen() {
             ListEmptyComponent={() =>
               peopleQuery.q ? (
                 <View style={styles.emptySearchState}>
-                  <Text style={styles.emptySearchIcon}>🔍</Text>
+                  <Ionicons name="search-outline" size={40} color={theme.textMuted} style={{ marginBottom: 12 }} />
                   <Text style={[styles.emptySearchText, { color: theme.textMuted }]}>
                     No people found for "{peopleQuery.q}"
                   </Text>
@@ -814,10 +708,62 @@ export default function HomeScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* NEW: Balloon picker sheet */}
-          <BalloonPickerSheet />
         </>
       )}
+
+      {archivedPeople.length > 0 && (
+        <TouchableOpacity
+          style={styles.archivedRow}
+          onPress={() => setShowArchivedModal(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="archive-outline" size={16} color={theme.textMuted} style={{ marginRight: 6 }} />
+          <Text style={[styles.archivedRowText, { color: theme.textMuted }]}>
+            {archivedPeople.length} archived
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <Modal
+        visible={showArchivedModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowArchivedModal(false)}
+      >
+        <Pressable style={styles.archivedModalOverlay} onPress={() => setShowArchivedModal(false)}>
+          <Pressable style={[styles.archivedModalSheet, { backgroundColor: theme.card }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.archivedModalHandle, { backgroundColor: theme.divider }]} />
+            <Text style={[styles.archivedModalTitle, { color: theme.text }]}>Archived People</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+            {archivedPeople.map((person) => (
+              <View key={person.id} style={[styles.archivedPersonRow, { borderBottomColor: theme.divider }]}>
+                <View style={[styles.archivedAvatar, { backgroundColor: theme.primary + '20' }]}>
+                  <Text style={[styles.archivedAvatarText, { color: theme.primary }]}>
+                    {person.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.archivedPersonInfo}>
+                  <Text style={[styles.archivedPersonName, { color: theme.text }]}>{person.name}</Text>
+                  <Text style={[styles.archivedPersonType, { color: theme.textMuted }]}>{person.relationship_type}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.restoreButton, { backgroundColor: theme.primary + '15' }]}
+                  onPress={() => {
+                    restorePerson(person.id);
+                    loadPeople();
+                    if (archivedPeople.length === 1) setShowArchivedModal(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.restoreButtonText, { color: theme.primary }]}>Restore</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       </Pressable>
     </LinearGradient>
   );
@@ -998,13 +944,10 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    padding: 20,
     paddingTop: 8,
     paddingBottom: 140,
   },
-  personCard: {
-    marginBottom: 16,
-  },
+  personCard: {},
   cardWrapper: {
     borderRadius: 20,
     shadowColor: '#F43F5E',
@@ -1020,8 +963,8 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 18,
+    alignItems: 'flex-start',
+    gap: 14,
   },
 
   ringCenter: {
@@ -1040,8 +983,23 @@ const styles = StyleSheet.create({
   },
   ringScore: {
     fontSize: 13,
-    marginTop: -1,
+    marginTop: -5,
     fontFamily: 'Poppins_600SemiBold',
+  },
+  ringGradeBadge: {
+    position: 'absolute',
+    bottom: -3,
+    right: -3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ringGradeBadgeText: {
+    fontSize: 9,
+    fontFamily: 'Poppins_700Bold',
+    color: '#FFF',
   },
 
   personInfo: { flex: 1 },
@@ -1049,21 +1007,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   personName: {
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: 'Poppins_600SemiBold',
     letterSpacing: -0.3,
     flex: 1,
   },
-  favoriteIcon: { fontSize: 24 },
+  favoriteIcon: { fontSize: 22 },
   relationshipBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginBottom: 6,
   },
   relationshipType: {
     fontSize: 13,
@@ -1269,6 +1227,80 @@ dashboardStreakText: {
   fontSize: 14,
   fontFamily: 'Poppins_700Bold',
   letterSpacing: -0.2,
+},
+archivedRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 12,
+  paddingHorizontal: 20,
+},
+archivedRowText: {
+  fontSize: 13,
+  fontFamily: 'Poppins_500Medium',
+},
+archivedModalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'flex-end',
+},
+archivedModalSheet: {
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  padding: 20,
+  paddingBottom: 40,
+  maxHeight: '70%',
+},
+archivedModalHandle: {
+  width: 40,
+  height: 4,
+  borderRadius: 2,
+  alignSelf: 'center',
+  marginBottom: 16,
+},
+archivedModalTitle: {
+  fontSize: 18,
+  fontFamily: 'Poppins_700Bold',
+  marginBottom: 16,
+},
+archivedPersonRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 12,
+  borderBottomWidth: 1,
+  gap: 12,
+},
+archivedAvatar: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+archivedAvatarText: {
+  fontSize: 16,
+  fontFamily: 'Poppins_700Bold',
+},
+archivedPersonInfo: {
+  flex: 1,
+},
+archivedPersonName: {
+  fontSize: 15,
+  fontFamily: 'Poppins_600SemiBold',
+},
+archivedPersonType: {
+  fontSize: 12,
+  fontFamily: 'Poppins_400Regular',
+  marginTop: 2,
+},
+restoreButton: {
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  borderRadius: 10,
+},
+restoreButtonText: {
+  fontSize: 13,
+  fontFamily: 'Poppins_600SemiBold',
 },
 controlsPill: {
   flexDirection: 'row',

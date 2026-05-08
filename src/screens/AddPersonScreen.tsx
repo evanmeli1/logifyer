@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -23,17 +23,19 @@ import {
   getAllPeople,
 } from '../database/db';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import { checkSubscription } from '../services/purchases';
 import Animated, { FadeInDown, FadeIn, SlideInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const EMOJI_OPTIONS = [
-  '😊', '😎', '🥰', '🤗', '😇', '🙂', '😌', '🤩',
-  '👋', '👨‍👩‍👧', '❤️', '💔', '💼', '🤝', '👥', '👤',
-  '⭐', '✨', '💫', '🌟', '💎', '👑', '🎯', '🔥',
-  '🏠', '🎓', '💪', '🎨', '🎮', '📚', '💻', '🎵',
+  '🤝', '❤️', '💙', '💚', '💛', '💜', '🧡', '🖤',
+  '🫂', '👥', '💑', '💼', '🎓', '🏠', '🌟', '⭐',
+  '🎯', '🏆', '🌸', '🌺', '🌻', '🌈', '✨', '💫',
+  '🔥', '🎨', '📚', '🎵', '🎭', '🧩', '🌍', '🎸',
 ];
 
 // Limits
@@ -59,13 +61,15 @@ export default function AddPersonScreen({ navigation }: any) {
   // Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
-  const [newTypeEmoji, setNewTypeEmoji] = useState('😊');
+  const [newTypeEmoji, setNewTypeEmoji] = useState('🤝');
 
-  useEffect(() => {
-    loadRelationshipTypes();
-    checkPremiumStatus();
-    checkPeopleLimit();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadRelationshipTypes();
+      checkPremiumStatus();
+      checkPeopleLimit();
+    }, [])
+  );
 
   const loadRelationshipTypes = () => {
     const types = getAllRelationshipTypes() as RelationshipType[];
@@ -169,7 +173,7 @@ export default function AddPersonScreen({ navigation }: any) {
   const handleAddCustomType = () => {
     if (!isPremium) {
       Alert.alert(
-        'Premium Feature ✨',
+        'Premium Feature',
         'Custom relationship types are available for Premium members.',
         [
           { text: 'Maybe Later', style: 'cancel' },
@@ -211,7 +215,7 @@ export default function AddPersonScreen({ navigation }: any) {
       setSelectedType(trimmedName);
       setShowAddModal(false);
       setNewTypeName('');
-      setNewTypeEmoji('😊');
+      setNewTypeEmoji('🤝');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to add custom type');
     }
@@ -271,7 +275,7 @@ export default function AddPersonScreen({ navigation }: any) {
             entering={FadeIn.duration(300)}
             style={[styles.limitBanner, { backgroundColor: '#FEF3C7' }]}
           >
-            <Text style={styles.limitBannerIcon}>⚠️</Text>
+            <Ionicons name="warning-outline" size={16} color="#92400E" />
             <Text style={styles.limitBannerText}>
               {peopleCount}/{FREE_PEOPLE_LIMIT} people used. 
               {peopleCount >= FREE_PEOPLE_LIMIT - 1 ? ' Upgrade for more!' : ''}
@@ -282,7 +286,7 @@ export default function AddPersonScreen({ navigation }: any) {
         {/* Preview Card */}
         <Animated.View 
           entering={FadeInDown.delay(0).duration(400)}
-          style={[styles.previewCard, { backgroundColor: theme.card }]}
+          style={[styles.previewCard, { backgroundColor: theme.primary + '12' }]}
         >
           <View style={[styles.previewAvatar, { backgroundColor: theme.primary + '15' }]}>
             <Text style={[styles.previewAvatarText, { color: theme.primary }]}>
@@ -293,7 +297,6 @@ export default function AddPersonScreen({ navigation }: any) {
             {name || 'New Person'}
           </Text>
           <View style={[styles.previewBadge, { backgroundColor: theme.primary + '15' }]}>
-            <Text style={styles.previewBadgeEmoji}>{selectedTypeData?.emoji || '👤'}</Text>
             <Text style={[styles.previewBadgeText, { color: theme.primary }]}>{selectedType}</Text>
           </View>
         </Animated.View>
@@ -301,7 +304,7 @@ export default function AddPersonScreen({ navigation }: any) {
         {/* Name Input */}
         <Animated.View 
           entering={FadeInDown.delay(100).duration(400)}
-          style={[styles.section, { backgroundColor: theme.card }]}
+          style={[styles.section, { backgroundColor: theme.primary + '08' }]}
         >
           <View style={styles.labelRow}>
             <Text style={[styles.label, { color: theme.textMuted }]}>NAME</Text>
@@ -328,7 +331,7 @@ export default function AddPersonScreen({ navigation }: any) {
               backgroundColor: theme.backgroundSecondary 
             }
           ]}>
-            <View style={[styles.inputIcon, { backgroundColor: theme.primary + '15' }]}>
+            <View style={styles.inputIcon}>
               <Text style={styles.inputIconText}>👤</Text>
             </View>
             <TextInput
@@ -353,7 +356,7 @@ export default function AddPersonScreen({ navigation }: any) {
         {/* Relationship Type - Horizontal Chips */}
         <Animated.View 
           entering={FadeInDown.delay(200).duration(400)}
-          style={[styles.section, { backgroundColor: theme.card }]}
+          style={[styles.section, { backgroundColor: theme.primary + '08' }]}
         >
           <View style={styles.labelRow}>
             <Text style={[styles.label, { color: theme.textMuted }]}>RELATIONSHIP</Text>
@@ -386,7 +389,6 @@ export default function AddPersonScreen({ navigation }: any) {
                     },
                   ]}
                 >
-                  <Text style={styles.chipEmoji}>{item.emoji}</Text>
                   <Text
                     style={[
                       styles.chipText,
@@ -420,9 +422,14 @@ export default function AddPersonScreen({ navigation }: any) {
             <Text style={[styles.addButtonPlus, { color: theme.primary }]}>+</Text>
             <Text style={[styles.addButtonText, { color: theme.text }]}>Create Custom Type</Text>
             {!isPremium && (
-              <View style={[styles.proBadge, { backgroundColor: theme.primary }]}>
+              <LinearGradient
+                colors={['#F59E0B', '#EC4899', '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.proBadge}
+              >
                 <Text style={styles.proBadgeText}>PRO</Text>
-              </View>
+              </LinearGradient>
             )}
           </TouchableOpacity>
           
@@ -436,7 +443,7 @@ export default function AddPersonScreen({ navigation }: any) {
           entering={FadeInDown.delay(300).duration(400)}
           style={[styles.tipsSection, { backgroundColor: theme.primary + '08' }]}
         >
-          <Text style={styles.tipsIcon}>💡</Text>
+          <Ionicons name="bulb-outline" size={22} color={theme.primary} />
           <Text style={[styles.tipsText, { color: theme.textMuted }]}>
             You can log positive and negative incidents with this person to track your relationship health.
           </Text>
@@ -790,6 +797,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 4,
+    overflow: 'hidden',
   },
   proBadgeText: {
     color: '#FFF',

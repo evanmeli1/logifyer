@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 
 
 type TabType = 'terms' | 'privacy' | 'support';
@@ -82,7 +83,7 @@ export default function LegalScreen() {
           {/* Contact Card */}
           <View style={[styles.contactCard, { backgroundColor: theme.card }]}>
             <View style={[styles.contactIcon, { backgroundColor: theme.primary + '15' }]}>
-              <Text style={styles.contactEmoji}>💬</Text>
+              <Ionicons name="mail-outline" size={32} color={theme.primary} />
             </View>
             <Text style={[styles.contactTitle, { color: theme.text }]}>Get in Touch</Text>
             <Text style={[styles.contactDescription, { color: theme.textMuted }]}>
@@ -100,7 +101,7 @@ export default function LegalScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.emailGradient}
               >
-                <Text style={styles.emailIcon}>✉️</Text>
+                <Ionicons name="mail-outline" size={18} color="#FFF" />
                 <Text style={styles.emailText}>support@logifyer.com</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -131,7 +132,7 @@ export default function LegalScreen() {
 
           {/* Response Time */}
           <View style={[styles.responseCard, { backgroundColor: theme.primary + '08' }]}>
-            <Text style={styles.responseIcon}>⏱️</Text>
+            <Ionicons name="time-outline" size={18} color={theme.primary} />
             <Text style={[styles.responseText, { color: theme.textMuted }]}>
               We typically respond within 24 hours
             </Text>
@@ -141,7 +142,7 @@ export default function LegalScreen() {
     }
 
     const content = activeTab === 'terms' ? termsContent : privacyContent;
-    const icon = activeTab === 'terms' ? '📜' : '🔒';
+    const icon = activeTab === 'terms' ? '§' : '◈';
     const intro = activeTab === 'terms' 
       ? 'Please read these terms carefully before using Logifyer.'
       : 'Your privacy matters. Here\'s how we protect your data.';

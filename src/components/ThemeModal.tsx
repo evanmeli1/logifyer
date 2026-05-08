@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -137,7 +138,11 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
             {/* Dark Mode Toggle */}
             <View style={[styles.darkModeRow, { borderBottomColor: theme.divider }]}>
               <View style={styles.darkModeInfo}>
-                <Text style={styles.darkModeIcon}>{resolvedMode === 'dark' ? '🌙' : '☀️'}</Text>
+                <Ionicons
+                  name={resolvedMode === 'dark' ? 'moon-outline' : 'sunny-outline'}
+                  size={26}
+                  color={resolvedMode === 'dark' ? '#A78BFA' : '#F59E0B'}
+                />
                 <View>
                   <Text style={[styles.darkModeTitle, { color: theme.text }]}>Dark Mode</Text>
                   <Text style={[styles.darkModeSubtitle, { color: theme.textMuted }]}>
@@ -194,7 +199,7 @@ export default function ThemeModal({ visible, onClose, onUpgrade }: ThemeModalPr
                           isLocked && styles.colorCircleLocked
                         ]}
                       >
-                        {isLocked && <Text style={styles.lockIcon}>🔒</Text>}
+                        {isLocked && <Ionicons name="lock-closed" size={16} color="#FFF" />}
                         {isSelected && !isLocked && <Text style={styles.checkIcon}>✓</Text>}
                       </LinearGradient>
                     </View>

@@ -6,6 +6,7 @@ import { getAllCategories, updateCategoryWeight } from '../database/db';
 import { Category } from '../types';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 // Memoized component - prevents re-render unless props change
 const CategoryItem = React.memo(({ 
@@ -170,7 +171,7 @@ export default function CategoryWeightsScreen() {
       {/* Info Card */}
       <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
         <View style={[styles.infoIcon, { backgroundColor: theme.primary + '12' }]}>
-          <Text style={styles.infoIconText}>💡</Text>
+          <Ionicons name="bulb-outline" size={22} color={theme.primary} />
         </View>
         <Text style={[styles.infoText, { color: theme.textMuted }]}>
           Adjust how much each action affects  scores. Higher values = bigger impact.

@@ -14,6 +14,8 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  guestMode: boolean;
+  enterGuestMode: () => void;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -24,6 +26,8 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,
+  guestMode: false,
+  enterGuestMode: () => {},
   signInWithGoogle: async () => {},
   signInWithApple: async () => {},
   signOut: async () => {},
@@ -37,6 +41,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncFailed, setSyncFailed] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
+
+  const enterGuestMode = () => setGuestMode(true);
   const mountedRef = useRef(true);
   const authSubscriptionRef = useRef<any>(null);
 
@@ -90,6 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Handle sign-in events
           // Handle sign-in events
           if (_event === 'SIGNED_IN' && session?.user) {
+            setGuestMode(false);
             // Don't await - let it run in background so it doesn't block UI
             handlePostSignIn(session.user).catch((error) => {
               console.error('Post sign-in handling error:', error);
@@ -488,12 +496,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider 
-      value={{ 
-        session, 
-        user, 
-        loading, 
-        signInWithGoogle, 
-        signInWithApple, 
+      value={{
+        session,
+        user,
+        loading,
+        guestMode,
+        enterGuestMode,
+        signInWithGoogle,
+        signInWithApple,
         signOut,
         retrySyncData,
       }}

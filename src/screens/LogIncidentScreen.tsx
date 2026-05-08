@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -11,7 +12,6 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,43 +19,29 @@ import { getAllPeople, getAllCategories, logIncident, getSettings } from '../dat
 import { Person, Category } from '../types';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../theme';
-import Reanimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import { Image } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const NOTE_MAX = 50;
+
 type FeelingKey = 'calm' | 'joy' | 'tension' | 'sad' | 'connect' | 'anxious';
 
-const BALLOONS: Array<{
-  key: FeelingKey;
-  title: string;
-  subtitle: string;
-  grad: [string, string];
-}> = [
-  { key: 'calm', title: 'Calm', subtitle: 'Peaceful / Steady', grad: ['#60A5FA', '#93C5FD'] },
-  { key: 'joy', title: 'Warmth', subtitle: 'Joyful / Caring', grad: ['#FBBF24', '#FDE68A'] },
-  { key: 'connect', title: 'Trust', subtitle: 'Close / Clear', grad: ['#34D399', '#A7F3D0'] },
-
-  { key: 'anxious', title: 'Uneasy', subtitle: 'Worried / Uncertain', grad: ['#A78BFA', '#C4B5FD'] },
-  { key: 'sad', title: 'Low', subtitle: 'Sad / Distant', grad: ['#9CA3AF', '#D1D5DB'] },
-  { key: 'tension', title: 'Tense', subtitle: 'Angry / Strained', grad: ['#F87171', '#FCA5A5'] },
+const BALLOONS: Array<{ key: FeelingKey; title: string; grad: [string, string] }> = [
+  { key: 'calm',    title: 'Calm',    grad: ['#60A5FA', '#93C5FD'] },
+  { key: 'joy',     title: 'Warmth',  grad: ['#FBBF24', '#FDE68A'] },
+  { key: 'connect', title: 'Trust',   grad: ['#34D399', '#A7F3D0'] },
+  { key: 'anxious', title: 'Uneasy',  grad: ['#A78BFA', '#C4B5FD'] },
+  { key: 'sad',     title: 'Low',     grad: ['#9CA3AF', '#D1D5DB'] },
+  { key: 'tension', title: 'Tense',   grad: ['#F87171', '#FCA5A5'] },
 ];
-
 
 export default function LogIncidentScreen({ route }: any) {
   const { theme } = useTheme();
   const navigation = useNavigation();
 
   const preSelectedPersonId = route.params?.personId;
-  const fromPersonDetail = route.params?.fromPersonDetail;
-
-  // NEW: feelingKey passed in from Home balloon picker
-  const initialFeelingKey = route.params?.feelingKey as FeelingKey | undefined;
+  const fromPersonDetail = route.params?.fromPersonDetail || route.params?.showBack;
 
   const [people, setPeople] = useState<Person[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -68,38 +54,13 @@ export default function LogIncidentScreen({ route }: any) {
   const [majorMultiplier, setMajorMultiplier] = useState(3);
   const [activeTab, setActiveTab] = useState<'negative' | 'positive'>('negative');
   const [showNote, setShowNote] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
-
-  // NEW: selected feeling state
-  const [selectedFeelingKey, setSelectedFeelingKey] = useState<FeelingKey>(
-      initialFeelingKey || 'calm'
-    );
+  const [selectedFeelingKey, setSelectedFeelingKey] = useState<FeelingKey>('calm');
 
 
 
-  const menuScale = useSharedValue(0);
-  const menuOpacity = useSharedValue(0);
 
-  const openMenu = () => {
-    setMenuVisible(true);
-    menuScale.value = withSpring(1, { damping: 20, stiffness: 500, mass: 0.5 });
-    menuOpacity.value = withTiming(1, { duration: 80 });
-  };
-
-  const closeMenu = () => {
-    menuScale.value = withTiming(0, { duration: 120 });
-    menuOpacity.value = withTiming(0, { duration: 80 });
-    setTimeout(() => setMenuVisible(false), 120);
-  };
-
-  const menuAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: menuScale.value }, { translateY: (1 - menuScale.value) * -10 }],
-    opacity: menuOpacity.value,
-  }));
-
-  const overlayAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: menuOpacity.value * 0.3,
-  }));
+  const [showSuccess, setShowSuccess] = useState(false);
+  const successScale = useRef(new Animated.Value(0)).current;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -124,7 +85,7 @@ export default function LogIncidentScreen({ route }: any) {
       setMajorMultiplier(settingsData?.major_multiplier || 3);
 
       categoriesData.forEach((_, i) => {
-        if (!categoryScaleAnims[i]) categoryScaleAnims[i] = new Animated.Value(0);
+        if (!categoryScaleAnims[i]) categoryScaleAnims[i] = new Animated.Value(1);
       });
       peopleData.forEach((_, i) => {
         if (!personScaleAnims[i]) personScaleAnims[i] = new Animated.Value(0);
@@ -136,10 +97,9 @@ export default function LogIncidentScreen({ route }: any) {
       setNote('');
       setShowNote(false);
       setActiveTab('negative');
-
-      // NEW: keep feeling if passed, otherwise reset to null
-      const nextFeeling = route.params?.feelingKey as FeelingKey | undefined;
-      setSelectedFeelingKey(nextFeeling || 'calm');
+      setSelectedFeelingKey((route.params?.feelingKey as FeelingKey) || 'calm');
+      setShowSuccess(false);
+      successScale.setValue(0);
 
 
       fadeAnim.setValue(0);
@@ -167,19 +127,10 @@ export default function LogIncidentScreen({ route }: any) {
         }).start();
       });
 
-      setTimeout(() => {
-        categoriesData.forEach((_, i) => {
-          categoryScaleAnims[i]?.setValue(0);
-          Animated.spring(categoryScaleAnims[i], {
-            toValue: 1,
-            friction: 6,
-            tension: 100,
-            delay: i * 40,
-            useNativeDriver: true,
-          }).start();
-        });
-      }, 200);
-    }, [preSelectedPersonId, route?.params?.feelingKey])
+      categoriesData.forEach((_, i) => {
+        categoryScaleAnims[i]?.setValue(1);
+      });
+    }, [preSelectedPersonId])
   );
 
   useEffect(() => {
@@ -214,19 +165,7 @@ export default function LogIncidentScreen({ route }: any) {
   }, [selectedCategory, selectedPersonId]);
 
   const buildFinalNote = () => {
-    const base = note.trim();
-
-    if (!selectedFeelingKey) {
-      return base || undefined;
-    }
-
-    const meta = BALLOONS.find(b => b.key === selectedFeelingKey);
-    const feelingText = meta ? `${meta.title} (${meta.subtitle})` : selectedFeelingKey;
-
-    // Store feeling in note (until DB adds a real field)
-    if (!base) return `Feeling: ${feelingText}`;
-    if (base.toLowerCase().startsWith('feeling:')) return base;
-    return `Feeling: ${feelingText}\n\n${base}`;
+    return note.trim() || undefined;
   };
 
   const handleSave = () => {
@@ -245,7 +184,7 @@ export default function LogIncidentScreen({ route }: any) {
         selectedCategory.default_points,
         isMajor,
         buildFinalNote(),
-        selectedFeelingKey || 'calm'
+        selectedFeelingKey
       );
 
       if (!success) {
@@ -253,10 +192,9 @@ export default function LogIncidentScreen({ route }: any) {
         return;
       }
 
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: -30, duration: 200, useNativeDriver: true }),
-      ]).start(() => navigation.goBack());
+      setShowSuccess(true);
+      Animated.spring(successScale, { toValue: 1, friction: 5, tension: 100, useNativeDriver: true }).start();
+      setTimeout(() => navigation.goBack(), 900);
     } catch (error) {
       Alert.alert('Error', 'Failed to log incident');
     }
@@ -315,10 +253,14 @@ export default function LogIncidentScreen({ route }: any) {
 
         <Text style={styles.headerTitle}>New Log</Text>
 
-        <TouchableOpacity onPress={openMenu} style={styles.menuBtn}>
-          <Text style={styles.menuIcon}>⋯</Text>
+        <TouchableOpacity
+          onPress={() => (navigation as any).navigate('ManageCategories')}
+          style={styles.menuBtn}
+        >
+          <Ionicons name="list-outline" size={22} color="#FFF" />
         </TouchableOpacity>
       </LinearGradient>
+
 
       {people.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -353,63 +295,20 @@ export default function LogIncidentScreen({ route }: any) {
         </View>
       ) : (
         <>
-          {menuVisible && (
-            <>
-              <Reanimated.View style={[styles.menuOverlay, overlayAnimatedStyle]}>
-                <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
-              </Reanimated.View>
-              <Reanimated.View
-                style={[styles.floatingMenu, { backgroundColor: theme.card }, menuAnimatedStyle]}
-              >
-                <View style={[styles.menuArrow, { borderBottomColor: theme.card }]} />
-                <TouchableOpacity
-                  style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]}
-                  onPress={() => {
-                    closeMenu();
-                    setTimeout(() => (navigation as any).navigate('ManageCategories'), 200);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.menuItemIcon, { backgroundColor: theme.primary + '15' }]}>
-                    <Text style={styles.menuItemIconText}>📝</Text>
-                  </View>
-                  <Text style={[styles.floatingMenuText, { color: theme.text }]}>
-                    Manage Categories
-                  </Text>
-                  <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.floatingMenuItem, { borderBottomWidth: 0 }]}
-                  onPress={() => {
-                    closeMenu();
-                    setTimeout(() => (navigation as any).navigate('CategoryWeights'), 200);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.menuItemIcon, { backgroundColor: '#F59E0B15' }]}>
-                    <Text style={styles.menuItemIconText}>⚖️</Text>
-                  </View>
-                  <Text style={[styles.floatingMenuText, { color: theme.text }]}>
-                    Category Weights
-                  </Text>
-                  <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
-                </TouchableOpacity>
-              </Reanimated.View>
-            </>
-          )}
-
           <Animated.View
             style={[
               styles.content,
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            {/* NEW: Feeling Section */}
-            <View style={styles.stickySectionFirst}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Overall feeling
-              </Text>
-
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.fullScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+            {/* Feeling Section */}
+            <View style={styles.stickySection}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>How do you feel?</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -417,7 +316,6 @@ export default function LogIncidentScreen({ route }: any) {
               >
                 {BALLOONS.map(b => {
                   const isSelected = selectedFeelingKey === b.key;
-
                   return (
                     <TouchableOpacity
                       key={b.key}
@@ -429,21 +327,10 @@ export default function LogIncidentScreen({ route }: any) {
                         colors={isSelected ? b.grad : [theme.card, theme.card]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={[
-                          styles.balloonCard,
-                          { borderColor: isSelected ? 'transparent' : theme.divider },
-                        ]}
+                        style={[styles.balloonCard, { borderColor: isSelected ? 'transparent' : theme.divider }]}
                       >
                         <Text style={[styles.balloonTitle, { color: isSelected ? '#111827' : theme.text }]}>
                           {b.title}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.balloonSubtitle,
-                            { color: isSelected ? 'rgba(17,24,39,0.75)' : theme.textMuted },
-                          ]}
-                        >
-                          {b.subtitle}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -528,25 +415,19 @@ export default function LogIncidentScreen({ route }: any) {
                 />
                 <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('negative')} activeOpacity={0.7}>
                   <Text style={[styles.tabText, { color: activeTab === 'negative' ? '#FFF' : theme.textMuted }]}>
-                    😔 Negative
+                    ↓ Negative
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('positive')} activeOpacity={0.7}>
                   <Text style={[styles.tabText, { color: activeTab === 'positive' ? '#FFF' : theme.textMuted }]}>
-                    😊 Positive
+                    ↑ Positive
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Scrollable Categories */}
-            <ScrollView
-              style={styles.categoryScroll}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.categoryScrollContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View style={styles.actionList}>
+            {/* Categories */}
+            <View style={styles.actionList}>
                 {displayedCategories.map((cat, index) => {
                   const isSelected = selectedCategory?.id === cat.id;
                   const globalIndex =
@@ -654,17 +535,21 @@ export default function LogIncidentScreen({ route }: any) {
                       placeholder="What happened? Add context..."
                       placeholderTextColor={theme.textMuted}
                       value={note}
-                      onChangeText={setNote}
+                      onChangeText={t => setNote(t.slice(0, NOTE_MAX))}
                       multiline
                       numberOfLines={3}
+                      maxLength={NOTE_MAX}
                     />
+                    <Text style={[styles.noteCharCount, { color: note.length >= NOTE_MAX ? '#EF4444' : theme.textMuted }]}>
+                      {note.length}/{NOTE_MAX}
+                    </Text>
                   </View>
                 )}
               </Animated.View>
 
-              <View style={{ height: 20 }} />
             </ScrollView>
           </Animated.View>
+
 
           <Animated.View style={[styles.fabContainer, { transform: [{ scale: buttonPulse }] }]}>
             <TouchableOpacity onPress={handleSave} activeOpacity={0.9} disabled={!selectedCategory || !selectedPersonId}>
@@ -684,6 +569,14 @@ export default function LogIncidentScreen({ route }: any) {
           </Animated.View>
         </>
       )}
+      {showSuccess && (
+        <Animated.View style={[styles.successOverlay, { transform: [{ scale: successScale }] }]}>
+          <View style={styles.successCircle}>
+            <Ionicons name="checkmark" size={48} color="#FFF" />
+          </View>
+          <Text style={styles.successText}>Logged!</Text>
+        </Animated.View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -693,7 +586,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   backIcon: { fontSize: 18, color: '#FFF', fontFamily: 'Poppins_600SemiBold' },
-  headerTitle: { fontSize: 20, fontFamily: 'Poppins_700Bold', color: '#FFF', letterSpacing: -0.3 },
+  headerTitle: { fontSize: 28, fontFamily: 'Poppins_700Bold', color: '#FFF', letterSpacing: -0.5 },
   menuBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   menuIcon: { fontSize: 20, color: '#FFF', fontFamily: 'Poppins_700Bold' },
 
@@ -708,8 +601,8 @@ const styles = StyleSheet.create({
 
   content: { flex: 1 },
 
-  stickySection: { paddingHorizontal: 20, marginBottom: 10 },
-  stickySectionFirst: { paddingHorizontal: 20, marginBottom: 10, paddingTop: 12 },
+  stickySection: { marginBottom: 10 },
+  stickySectionFirst: { marginBottom: 10, paddingTop: 12 },
 
   sectionTitle: { fontSize: 16, fontFamily: 'Poppins_700Bold', marginBottom: 8, letterSpacing: -0.3 },
 
@@ -733,8 +626,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', zIndex: 1 },
   tabText: { fontSize: 14, fontFamily: 'Poppins_600SemiBold' },
 
-  categoryScroll: { flex: 1 },
-  categoryScrollContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 65 },
+  fullScrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 120 },
   actionList: { gap: 10 },
   actionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1.5 },
   actionEmoji: { fontSize: 28, marginRight: 14 },
@@ -761,6 +653,7 @@ const styles = StyleSheet.create({
 
   noteContainer: { marginTop: 12 },
   noteInput: { borderRadius: 12, borderWidth: 1, padding: 14, fontSize: 14, fontFamily: 'Poppins_400Regular', minHeight: 80, textAlignVertical: 'top' },
+  noteCharCount: { fontSize: 11, fontFamily: 'Poppins_400Regular', textAlign: 'right', marginTop: 4 },
 
   fabContainer: { position: 'absolute', bottom: 20, left: 20, right: 20 },
   fab: { paddingVertical: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 },
@@ -773,5 +666,26 @@ const styles = StyleSheet.create({
   emptyButton: { borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 4 },
   emptyButtonGradient: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   emptyButtonText: { color: '#FFFFFF', fontSize: 17, fontFamily: 'Poppins_700Bold', letterSpacing: -0.3 },
+  successOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    zIndex: 999,
+  },
+  successCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  successText: {
+    color: '#FFF',
+    fontSize: 22,
+    fontFamily: 'Poppins_700Bold',
+  },
 });
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         

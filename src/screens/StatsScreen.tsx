@@ -1,34 +1,20 @@
 import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getAllPeople, getPersonScore, getIncidentsByPerson } from '../database/db';
-import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../theme';
-import { themeColors } from '../theme/themes';
-import ThemeModal from '../components/ThemeModal';
 import { useAuth } from '../contexts/AuthContext';
 import { checkSubscription } from '../services/purchases';
 import { generateOverviewInsights, AIOverviewResult } from '../services/ai';
-import { getFeelingCounts } from '../database/db';
-
-type FeelingKey = 'calm' | 'joy' | 'tension' | 'sad' | 'connect' | 'anxious';
-
-const FEELINGS: Record<FeelingKey, { label: string; grad: [string, string] }> = {
-  calm: { label: 'Calm', grad: ['#60A5FA', '#93C5FD'] },
-  joy: { label: 'Warm', grad: ['#FBBF24', '#FDE68A'] },
-  tension: { label: 'Sharp', grad: ['#F87171', '#FCA5A5'] },
-  anxious: { label: 'Uneasy', grad: ['#A78BFA', '#C4B5FD'] },
-  sad: { label: 'Grey', grad: ['#9CA3AF', '#D1D5DB'] },
-  connect: { label: 'Green', grad: ['#34D399', '#A7F3D0'] },
-};
 
 
 export default function StatsScreen() {
   const navigation = useNavigation();
-  const { theme, themeColor } = useTheme();
+  const { theme } = useTheme();
   const { user } = useAuth();
-  const [showThemeModal, setShowThemeModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [loadingPremium, setLoadingPremium] = useState(true);
   const [aiOverview, setAiOverview] = useState<AIOverviewResult | null>(null);
@@ -41,20 +27,6 @@ export default function StatsScreen() {
     thisWeekNegative: 0,
     gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
   });
-  const [feelingsAll, setFeelingsAll] = useState<{ feeling_key: string; count: number }[]>([]);
-  const [feelingsWeek, setFeelingsWeek] = useState<{ feeling_key: string; count: number }[]>([]);
-  const [showAllFeelings, setShowAllFeelings] = useState(false);
-  const [showAllTimeFeelings, setShowAllTimeFeelings] = useState(false);
-
-
-  
-
-  useFocusEffect(
-    React.useCallback(() => {
-      setFeelingsAll(getFeelingCounts());
-      setFeelingsWeek(getFeelingCounts(7));
-    }, [])
-  );
 
 
   useFocusEffect(
@@ -217,102 +189,10 @@ export default function StatsScreen() {
     }
   };
 
-  const renderFeelingBars = (
-    data: { feeling_key: string; count: number }[],
-    limit = 3
-  ) => {
-    const total = data.reduce((sum, x) => sum + x.count, 0) || 1;
-    const sorted = [...data].sort((a, b) => b.count - a.count);
-
-    const shown = showAllFeelings ? sorted : sorted.slice(0, limit);
-
-    return (
-      <View style={{ gap: 12 }}>
-        {shown.map((x) => {
-          const key = (x.feeling_key as FeelingKey) || 'calm';
-          const meta = FEELINGS[key] || FEELINGS.calm;
-
-          const pct = Math.round((x.count / total) * 100);
-
-          return (
-            <View key={`${x.feeling_key}-${x.count}`} style={{ gap: 8 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <LinearGradient
-                  colors={meta.grad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 7,
-                    borderRadius: 999,
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontFamily: 'Poppins_700Bold',
-                      color: '#111827',
-                    }}
-                  >
-                    {meta.label}
-                  </Text>
-                </LinearGradient>
-
-                <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.textMuted }}>
-                  {x.count} ({pct}%)
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  height: 10,
-                  borderRadius: 6,
-                  backgroundColor: theme.backgroundSecondary,
-                  overflow: 'hidden',
-                }}
-              >
-                <LinearGradient
-                  colors={meta.grad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{
-                    width: `${pct}%`,
-                    height: '100%',
-                    borderRadius: 6,
-                  }}
-                />
-              </View>
-            </View>
-          );
-        })}
-
-        {sorted.length > limit && (
-          <TouchableOpacity
-            onPress={() => setShowAllFeelings(v => !v)}
-            activeOpacity={0.8}
-            style={{ alignSelf: 'flex-start', marginTop: 2 }}
-          >
-            <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.primary }}>
-              {showAllFeelings ? 'Show less' : `Show all (${sorted.length})`}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
 
 
 
   const trend = getTrendInfo();
-  const currentColorData = themeColors[themeColor as keyof typeof themeColors];
-
   return (
     <LinearGradient
       colors={[theme.background, theme.backgroundSecondary]}
@@ -331,7 +211,7 @@ export default function StatsScreen() {
             style={[styles.settingsButton, { backgroundColor: theme.headerOverlay }]}
             onPress={() => (navigation as any).navigate('Settings', { screen: 'SettingsMain' })}
           >
-            <Text style={{ fontSize: 22, color: '#FFF' }}>☰</Text>
+            <Ionicons name="menu-outline" size={22} color="#FFF" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -392,43 +272,6 @@ export default function StatsScreen() {
           </View>
         </Animated.View>
 
-        {/* Feelings */}
-        <Animated.View entering={FadeInDown.delay(350).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Mood</Text>
-
-          <Text style={{ fontFamily: 'Poppins_600SemiBold', color: theme.textMuted, marginBottom: 10 }}>
-            Last 7 days
-          </Text>
-          {renderFeelingBars(feelingsWeek)}
-
-          <View style={{ height: 18 }} />
-
-          <View style={styles.allTimeToggleRow}>
-  <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>All time</Text>
-
-  <TouchableOpacity
-    onPress={() => setShowAllTimeFeelings(v => !v)}
-    activeOpacity={0.85}
-    style={[
-      styles.tinyPill,
-      { backgroundColor: theme.backgroundSecondary, borderColor: theme.border },
-    ]}
-  >
-    <Text style={[styles.tinyPillText, { color: theme.text }]}>
-      {showAllTimeFeelings ? 'Hide' : 'Show'}
-    </Text>
-    <Text style={[styles.tinyChevron, { color: theme.textMuted }]}>
-      {showAllTimeFeelings ? '▲' : '▼'}
-    </Text>
-  </TouchableOpacity>
-</View>
-
-{showAllTimeFeelings && renderFeelingBars(feelingsAll)}
-
-
-        </Animated.View>
-
-
         {/* Health Distribution */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Health Distribution</Text>
@@ -471,14 +314,19 @@ export default function StatsScreen() {
             <View>
               <View style={styles.aiHeader}>
                 <View style={styles.aiTitleRow}>
-                  <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 0 }]}>🤖 AI Overview</Text>
-                  <View style={[styles.proBadgeSmall, { backgroundColor: theme.primary }]}>
+                  <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 0 }]}>AI Overview</Text>
+                  <LinearGradient
+                    colors={['#F59E0B', '#EC4899', '#8B5CF6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.proBadgeSmall}
+                  >
                     <Text style={styles.proBadgeSmallText}>PRO</Text>
-                  </View>
+                  </LinearGradient>
                 </View>
                 {aiOverview && (
                   <Text style={[styles.cacheIndicator, { color: theme.textMuted }]}>
-                    {aiOverview.isCached ? '📦 Cached' : '✨ Fresh'} • {aiOverview.generatedAt}
+                    {aiOverview.isCached ? 'Cached' : 'Fresh'} • {aiOverview.generatedAt}
                   </Text>
                 )}
               </View>
@@ -521,14 +369,14 @@ export default function StatsScreen() {
                   <View style={styles.aiRow}>
                     {aiOverview.topConcern && (
                       <View style={[styles.aiMiniCard, { backgroundColor: '#FEF2F2', flex: 1 }]}>
-                        <Text style={styles.aiMiniIcon}>⚠️</Text>
+                        <Ionicons name="warning-outline" size={20} color="#EF4444" />
                         <Text style={[styles.aiMiniLabel, { color: '#EF4444' }]}>Top Concern</Text>
                         <Text style={[styles.aiMiniText, { color: '#7F1D1D' }]} numberOfLines={3}>{aiOverview.topConcern}</Text>
                       </View>
                     )}
                     {aiOverview.topStrength && (
                       <View style={[styles.aiMiniCard, { backgroundColor: '#ECFDF5', flex: 1 }]}>
-                        <Text style={styles.aiMiniIcon}>💪</Text>
+                        <Ionicons name="trending-up-outline" size={20} color="#10B981" />
                         <Text style={[styles.aiMiniLabel, { color: '#10B981' }]}>Top Strength</Text>
                         <Text style={[styles.aiMiniText, { color: '#065F46' }]} numberOfLines={3}>{aiOverview.topStrength}</Text>
                       </View>
@@ -538,7 +386,7 @@ export default function StatsScreen() {
                   {/* Recommendation */}
                   {aiOverview.recommendation && (
                     <View style={[styles.aiSection, { backgroundColor: theme.primary + '10', borderLeftWidth: 3, borderLeftColor: theme.primary }]}>
-                      <Text style={[styles.aiSectionTitle, { color: theme.primary }]}>💡 Recommendation</Text>
+                      <Text style={[styles.aiSectionTitle, { color: theme.primary }]}>Recommendation</Text>
                       <Text style={[styles.aiSectionText, { color: theme.text }]}>{aiOverview.recommendation}</Text>
                     </View>
                   )}
@@ -550,7 +398,7 @@ export default function StatsScreen() {
                     disabled={loadingAI}
                   >
                     <Text style={[styles.regenerateButtonText, { color: theme.primary }]}>
-                      {loadingAI ? 'Analyzing...' : '🔄 Regenerate'}
+                      {loadingAI ? 'Analyzing...' : 'Regenerate'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -564,7 +412,7 @@ export default function StatsScreen() {
             >
               <View style={styles.lockedOverlay}>
                 <View style={[styles.lockBadge, { backgroundColor: theme.primary + '15' }]}>
-                  <Text style={styles.lockIcon}>🔒</Text>
+                  <Ionicons name="lock-closed-outline" size={28} color={theme.primary} />
                 </View>
                 <Text style={[styles.lockedTitle, { color: theme.text }]}>AI Overview</Text>
                 <Text style={[styles.lockedSubtitle, { color: theme.textMuted }]}>Patterns across all your relationships</Text>
@@ -583,37 +431,7 @@ export default function StatsScreen() {
           )}
         </Animated.View>
 
-        {/* Theme Card */}
-        <Animated.View entering={FadeInDown.delay(600).duration(400)} style={[styles.card, { backgroundColor: theme.card }]}>
-          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowThemeModal(true)}>
-            <View style={styles.themeCard}>
-              <View style={styles.themeLeft}>
-                <Text style={styles.themeIcon}>🎨</Text>
-                <View style={styles.themeInfo}>
-                  <Text style={[styles.themeTitle, { color: theme.text }]}>Personalize Theme</Text>
-                  <Text style={[styles.themeSubtitle, { color: theme.textMuted }]}>Current: {currentColorData.name}</Text>
-                </View>
-              </View>
-              <View style={styles.colorDots}>
-                <LinearGradient
-                  colors={[theme.primary, theme.primaryLight]}
-                  style={[styles.colorDot, styles.colorDotActive]}
-                />
-                <Text style={[styles.themeArrow, { color: theme.textMuted }]}>→</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
       </ScrollView>
-
-      <ThemeModal
-        visible={showThemeModal}
-        onClose={() => setShowThemeModal(false)}
-        onUpgrade={() => {
-          setShowThemeModal(false);
-          (navigation as any).navigate('Settings', { screen: 'Paywall' });
-        }}
-      />
     </LinearGradient>
   );
 }
@@ -828,6 +646,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    overflow: 'hidden',
   },
   proBadgeSmallText: {
     color: '#FFF',
@@ -953,47 +772,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: 'Poppins_700Bold',
-  },
-  themeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  themeLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  themeIcon: {
-    fontSize: 26,
-  },
-  themeInfo: {},
-  themeTitle: {
-    fontSize: 15,
-    fontFamily: 'Poppins_700Bold',
-  },
-  themeSubtitle: {
-    fontSize: 12,
-    fontFamily: 'Poppins_500Medium',
-    marginTop: 2,
-  },
-  colorDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  colorDot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-  },
-  colorDotActive: {
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  themeArrow: {
-    fontSize: 18,
-    fontFamily: 'Poppins_500Medium',
   },
   allTimeToggleRow: {
   flexDirection: 'row',

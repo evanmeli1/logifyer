@@ -100,7 +100,7 @@ const FloatingShape = memo(({
 FloatingShape.displayName = 'FloatingShape';
 
 export default function SignInScreen() {
-  const { signInWithGoogle, signInWithApple } = useAuth();
+  const { signInWithGoogle, signInWithApple, enterGuestMode } = useAuth();
   const navigation =
   useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'SignIn'>>();
@@ -119,13 +119,8 @@ export default function SignInScreen() {
   }, []);
 
   const safeNavigateBack = () => {
-    if (isMountedRef.current) {
-      // Check if we can go back, otherwise navigate to home
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      } else {
-        (navigation as any).navigate('MainApp');
-      }
+    if (isMountedRef.current && navigation.canGoBack()) {
+      navigation.goBack();
     }
   };
 
@@ -183,11 +178,9 @@ export default function SignInScreen() {
 
   const handleSkip = () => {
     if (navigation.canGoBack()) {
-      // Opened from inside the app → just close
       navigation.goBack();
     } else {
-      // App start → enter app
-      navigation.replace('MainApp');
+      enterGuestMode();
     }
   };
 

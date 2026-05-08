@@ -137,8 +137,6 @@ export default function SettingsScreen() {
 
   // Safe defaults for settings values
   const majorMultiplier = settings?.major_multiplier ?? 3;
-  const timeDecayMonths = settings?.time_decay_months ?? 6;
-  const recencyBoostEnabled = settings?.recency_boost_enabled ?? false;
 
   return (
     <View style={[styles.wrapper, { backgroundColor: theme.background }]}>
@@ -205,12 +203,17 @@ export default function SettingsScreen() {
           {isPremium ? (
             <View style={[styles.settingRow, styles.premiumRow, styles.lastRow, { backgroundColor: theme.primary + '10' }]}>
               <View style={styles.settingInfo}>
-                <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>✨ Premium Active</Text>
+                <Text style={[styles.settingTitle, styles.premiumText, { color: theme.primary }]}>Premium Active</Text>
                 <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>You have access to all features</Text>
               </View>
-              <View style={[styles.premiumBadge, { backgroundColor: theme.primary }]}>
+              <LinearGradient
+                colors={['#F59E0B', '#EC4899', '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.premiumBadge}
+              >
                 <Text style={styles.premiumBadgeText}>PRO</Text>
-              </View>
+              </LinearGradient>
             </View>
           ) : (
             <TouchableOpacity 
@@ -242,7 +245,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
+            style={[styles.settingRow, styles.lastRow]}
             onPress={() => (navigation as any).navigate('GlobalSettings')}
           >
             <View style={styles.settingInfo}>
@@ -252,31 +255,6 @@ export default function SettingsScreen() {
             <Text style={[styles.settingValue, { color: theme.textMuted }]}>{majorMultiplier}x</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.settingRow, { borderBottomColor: theme.divider }]}
-            onPress={() => (navigation as any).navigate('GlobalSettings')}
-          >
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, { color: theme.text }]}>Time Decay</Text>
-              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Old incidents count less</Text>
-            </View>
-            <Text style={[styles.settingValue, { color: theme.textMuted }]}>
-              {timeDecayMonths === 0 ? 'Off' : `${timeDecayMonths} months`}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.settingRow, styles.lastRow]}
-            onPress={() => (navigation as any).navigate('GlobalSettings')}
-          >
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, { color: theme.text }]}>Recency Boost</Text>
-              <Text style={[styles.settingSubtitle, { color: theme.textMuted }]}>Last 7 days count 1.5x more</Text>
-            </View>
-            <Text style={[styles.settingValue, { color: theme.textMuted }]}>
-              {recencyBoostEnabled ? 'On' : 'Off'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Categories Section */}
@@ -526,6 +504,7 @@ const styles = StyleSheet.create({
   paddingHorizontal: 12,
   paddingVertical: 6,
   borderRadius: 8,
+  overflow: 'hidden',
 },
 premiumBadgeText: {
   color: '#FFFFFF',

@@ -102,17 +102,13 @@ export const syncLocalToCloud = async (userId: string) => {
       }
     }
 
-    // Sync incidents (with mapped UUIDs)
-    let skippedIncidents = 0;
+    // Sync incidents — category_id may be null if category was deleted; keep incident, set FK to null
     for (const incident of incidents as any[]) {
       const uuid = generateUUID();
       const mappedPersonId = personIdMap.get(incident.person_id);
-      const mappedCategoryId = categoryIdMap.get(incident.category_id);
+      if (!mappedPersonId) continue; // person deleted mid-sync
 
-      if (!mappedPersonId || !mappedCategoryId) {
-        skippedIncidents++;
-        continue;
-      }
+      const mappedCategoryId = categoryIdMap.get(incident.category_id) ?? null;
 
       const { error } = await supabase
         .from('incidents')
@@ -125,6 +121,8 @@ export const syncLocalToCloud = async (userId: string) => {
           is_major: incident.is_major === 1,
           note: incident.note,
           feeling_key: incident.feeling_key ?? 'calm',
+          category_name: incident.category_name ?? null,
+          category_emoji: incident.category_emoji ?? null,
           timestamp: incident.timestamp,
         });
 
@@ -144,15 +142,11 @@ export const syncLocalToCloud = async (userId: string) => {
           time_decay_months: (settings as any).time_decay_months,
           recency_boost_enabled: (settings as any).recency_boost_enabled === 1,
         });
-      
+
       if (error) {
         console.error('Error syncing settings:', error);
         throw new Error('Failed to sync settings');
       }
-    }
-
-    if (skippedIncidents > 0) {
-      console.warn(`⚠️ Skipped ${skippedIncidents} incident(s) due to missing person/category mapping`);
     }
     console.log('✅ Local to cloud sync complete!');
   } catch (error) {

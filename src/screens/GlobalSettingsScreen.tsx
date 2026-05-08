@@ -5,25 +5,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getSettings, updateSettings } from '../database/db';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function GlobalSettingsScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const [majorMultiplier, setMajorMultiplier] = useState(3);
-  const [timeDecayMonths, setTimeDecayMonths] = useState(6);
-  const [recencyBoostEnabled, setRecencyBoostEnabled] = useState(true);
 
   useEffect(() => {
     const settings: any = getSettings();
     if (settings) {
       setMajorMultiplier(settings.major_multiplier);
-      setTimeDecayMonths(settings.time_decay_months);
-      setRecencyBoostEnabled(settings.recency_boost_enabled === 1);
     }
   }, []);
 
   const handleSave = () => {
-    updateSettings(majorMultiplier, timeDecayMonths, recencyBoostEnabled);
+    updateSettings(majorMultiplier, 0, false);
     Alert.alert('Success', 'Settings saved!', [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);
@@ -54,7 +51,7 @@ export default function GlobalSettingsScreen() {
         <View style={[styles.card, { backgroundColor: theme.card }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.iconContainer, { backgroundColor: theme.primary + '15' }]}>
-              <Text style={styles.icon}>⚡</Text>
+              <Ionicons name="flash-outline" size={24} color={theme.primary} />
             </View>
             <View style={styles.cardTitleContainer}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>Major Multiplier</Text>
@@ -88,94 +85,33 @@ export default function GlobalSettingsScreen() {
           </View>
         </View>
 
-        {/* Time Decay */}
+        {/* How scoring works */}
         <View style={[styles.card, { backgroundColor: theme.card }]}>
           <View style={styles.cardHeader}>
-            <View style={[styles.iconContainer, { backgroundColor: '#F59E0B' + '15' }]}>
-              <Text style={styles.icon}>⏳</Text>
+            <View style={[styles.iconContainer, { backgroundColor: '#10B981' + '15' }]}>
+              <Ionicons name="analytics-outline" size={24} color="#10B981" />
             </View>
             <View style={styles.cardTitleContainer}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Time Decay</Text>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>How Scores Work</Text>
               <Text style={[styles.cardDescription, { color: theme.textMuted }]}>
-                Old incidents fade over time
+                Simple and transparent
               </Text>
             </View>
           </View>
-          
-          <View style={styles.optionGroup}>
-            {[
-              { value: 0, label: 'Off', sublabel: 'No decay' },
-              { value: 6, label: '6 mo', sublabel: 'Recommended' },
-              { value: 12, label: '12 mo', sublabel: 'Slow decay' },
-            ].map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.optionButton,
-                  { borderColor: theme.divider, backgroundColor: theme.card },
-                  timeDecayMonths === option.value && { 
-                    borderColor: theme.primary, 
-                    backgroundColor: theme.primary + '10' 
-                  }
-                ]}
-                onPress={() => setTimeDecayMonths(option.value)}
-              >
-                <Text style={[
-                  styles.optionLabel,
-                  { color: theme.text },
-                  timeDecayMonths === option.value && { color: theme.primary }
-                ]}>
-                  {option.label}
-                </Text>
-                <Text style={[
-                  styles.optionSublabel,
-                  { color: theme.textMuted },
-                  timeDecayMonths === option.value && { color: theme.primary }
-                ]}>
-                  {option.sublabel}
-                </Text>
-                {timeDecayMonths === option.value && (
-                  <View style={[styles.selectedDot, { backgroundColor: theme.primary }]} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Recency Boost */}
-        <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <TouchableOpacity
-            style={styles.toggleCard}
-            onPress={() => setRecencyBoostEnabled(!recencyBoostEnabled)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.iconContainer, { backgroundColor: '#10B981' + '15' }]}>
-              <Text style={styles.icon}>🚀</Text>
+          {[
+            { icon: 'layers-outline', color: theme.primary, label: 'Points add up', desc: 'Every logged action adds or subtracts points from a baseline of 100. Major events hit harder.' },
+            { icon: 'shield-checkmark-outline', color: '#10B981', label: 'Capped 0–100', desc: 'Scores never go below 0 or above 100, so they\'re always easy to read at a glance.' },
+          ].map((item, i) => (
+            <View key={i} style={[styles.scoringRow, i > 0 && { borderTopWidth: 1, borderTopColor: theme.divider }]}>
+              <View style={[styles.scoringIcon, { backgroundColor: item.color + '15' }]}>
+                <Ionicons name={item.icon as any} size={18} color={item.color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.scoringLabel, { color: theme.text }]}>{item.label}</Text>
+                <Text style={[styles.scoringDesc, { color: theme.textMuted }]}>{item.desc}</Text>
+              </View>
             </View>
-            <View style={styles.toggleInfo}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Recency Boost</Text>
-              <Text style={[styles.cardDescription, { color: theme.textMuted }]}>
-                Last 30 days count 1.5x more
-              </Text>
-            </View>
-            <View style={[
-              styles.toggle,
-              { backgroundColor: recencyBoostEnabled ? '#10B981' : theme.divider }
-            ]}>
-              <View style={[
-                styles.toggleThumb,
-                recencyBoostEnabled && styles.toggleThumbActive
-              ]} />
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: theme.primary + '08' }]}>
-          <Text style={styles.infoIcon}>💡</Text>
-          <Text style={[styles.infoText, { color: theme.textMuted }]}>
-            These settings affect how relationship scores are calculated. Changes apply to all future calculations.
-          </Text>
+          ))}
         </View>
       </ScrollView>
 
@@ -359,6 +295,29 @@ const styles = StyleSheet.create({
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
+  },
+  scoringRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  scoringIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scoringLabel: {
+    fontSize: 14,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 2,
+  },
+  scoringDesc: {
+    fontSize: 12,
+    fontFamily: 'Poppins_400Regular',
+    lineHeight: 18,
   },
   infoCard: {
     flexDirection: 'row',

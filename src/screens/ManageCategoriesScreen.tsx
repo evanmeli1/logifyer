@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, TextInput, M
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAllCategories, deleteCategory, addCustomCategory, updateCategoryWeight, getDatabase } from '../database/db';
+import { Ionicons } from '@expo/vector-icons';
 import { Category } from '../types';
 import { useTheme } from '../theme';
 import { checkSubscription } from '../services/purchases';
@@ -86,7 +87,7 @@ export default function ManageCategoriesScreen() {
     
     Alert.alert(
       'Delete Category',
-      `Delete "${escapedName}"? This will also delete all incidents using this category.`,
+      `Delete "${escapedName}"? Past logs using this category will be kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -215,9 +216,14 @@ export default function ManageCategoriesScreen() {
                 <Text style={[styles.proBadgeText, { color: theme.primary }]}>...</Text>
               </View>
             ) : isPremium ? (
-              <View style={[styles.proBadge, { backgroundColor: theme.primary + '15' }]}>
-                <Text style={[styles.proBadgeText, { color: theme.primary }]}>PRO</Text>
-              </View>
+              <LinearGradient
+                colors={['#F59E0B', '#EC4899', '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.proBadge}
+              >
+                <Text style={[styles.proBadgeText, { color: '#FFF' }]}>PRO</Text>
+              </LinearGradient>
             ) : (
               <TouchableOpacity 
                 style={[styles.upgradeButton, { backgroundColor: theme.primary }]}
@@ -267,7 +273,7 @@ export default function ManageCategoriesScreen() {
         {customCategories.length === 0 && (
           <View style={[styles.emptyCard, { backgroundColor: theme.card }]}>
             <View style={[styles.emptyIconContainer, { backgroundColor: theme.primary + '12' }]}>
-              <Text style={styles.emptyIcon}>✨</Text>
+              <Ionicons name="add-circle-outline" size={28} color={theme.primary} />
             </View>
             <Text style={[styles.emptyText, { color: theme.text }]}>No custom categories yet</Text>
             <Text style={[styles.emptySubtext, { color: theme.textMuted }]}>
@@ -355,8 +361,8 @@ function AddCategoryModal({ visible, onClose, onAdd, theme, existingCategories }
   const MAX_POINTS = 20;
   const MIN_POINTS = 1;
 
-  const negativeEmojis = ['😡', '😤', '🤬', '😒', '🙄', '😠', '💔', '😢', '🚫', '⏰', '💸', '🤥'];
-  const positiveEmojis = ['😊', '😄', '🥰', '❤️', '💪', '🎉', '✨', '🌟', '👍', '🙌', '✅', '👂'];
+  const negativeEmojis = ['✕', '↓', '⊘', '≈', '$', '◁', '−', '⊗', '∅', '⊖', '≠', '◀'];
+  const positiveEmojis = ['✓', '↑', '▲', '◎', '○', '◉', '⊕', '△', '+', '★', '♡', '◆'];
 
   const displayedEmojis = isPositive ? positiveEmojis : negativeEmojis;
 
@@ -454,7 +460,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme, existingCategories }
                 ]}
                 onPress={() => { setIsPositive(false); setEmoji(''); }}
               >
-                <Text style={styles.typeEmoji}>👎</Text>
+                <Ionicons name="remove-circle-outline" size={26} color={!isPositive ? '#EF4444' : theme.textMuted} />
                 <Text style={[
                   styles.typeButtonText,
                   { color: theme.textMuted },
@@ -471,7 +477,7 @@ function AddCategoryModal({ visible, onClose, onAdd, theme, existingCategories }
                 ]}
                 onPress={() => { setIsPositive(true); setEmoji(''); }}
               >
-                <Text style={styles.typeEmoji}>👍</Text>
+                <Ionicons name="add-circle-outline" size={26} color={isPositive ? '#10B981' : theme.textMuted} />
                 <Text style={[
                   styles.typeButtonText,
                   { color: theme.textMuted },
@@ -668,8 +674,8 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
   const MAX_POINTS = 20;
   const MIN_POINTS = 1;
 
-  const negativeEmojis = ['😡', '😤', '🤬', '😒', '🙄', '😠', '💔', '😢', '🚫', '⏰', '💸', '🤥', '👻', '🔥', '💢', '😰'];
-  const positiveEmojis = ['😊', '😄', '🥰', '❤️', '💪', '🎉', '✨', '🌟', '👍', '🙌', '✅', '👂', '🤗', '💯', '🏆', '💝'];
+  const negativeEmojis = ['✕', '↓', '⊘', '≈', '−', '◁', '⊗', '∅', '⊖', '≠', '◀', '▽', '□', '△', '⊙', '◊'];
+  const positiveEmojis = ['✓', '↑', '▲', '◎', '○', '◉', '⊕', '+', '★', '♡', '◆', '◈', '◐', '∞', '⊞', '✦'];
   const displayedEmojis = isPositive ? positiveEmojis : negativeEmojis;
   const color = isPositive ? '#10B981' : '#EF4444';
 
@@ -791,13 +797,7 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                   ]}
                   onPress={() => setIsPositive(false)}
                 >
-                  <Text style={[
-                    styles.editTypeToggleText,
-                    { color: theme.textMuted },
-                    !isPositive && { color: '#EF4444', fontFamily: 'Poppins_700Bold' }
-                  ]}>
-                    👎
-                  </Text>
+                  <Ionicons name="remove-circle-outline" size={18} color={!isPositive ? '#EF4444' : theme.textMuted} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -807,13 +807,7 @@ function EditCategoryModal({ visible, category, onClose, onSave, onDelete, theme
                   ]}
                   onPress={() => setIsPositive(true)}
                 >
-                  <Text style={[
-                    styles.editTypeToggleText,
-                    { color: theme.textMuted },
-                    isPositive && { color: '#10B981', fontFamily: 'Poppins_700Bold' }
-                  ]}>
-                    👍
-                  </Text>
+                  <Ionicons name="add-circle-outline" size={18} color={isPositive ? '#10B981' : theme.textMuted} />
                 </TouchableOpacity>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.editCloseBtn}>
@@ -1048,6 +1042,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    overflow: 'hidden',
   },
   proBadgeText: {
     fontSize: 12,

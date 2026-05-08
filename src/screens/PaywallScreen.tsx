@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import { useTheme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -76,34 +77,34 @@ const FloatingShape = ({
 };
 
 const FEATURES = [
-  { 
-    icon: '🤖', 
-    title: 'AI Insights', 
+  {
+    icon: 'sparkles-outline' as const,
+    title: 'AI Insights',
     description: 'Get personalized relationship advice powered by AI',
   },
-  { 
-    icon: '🎨', 
-    title: 'Premium Themes', 
+  {
+    icon: 'color-palette-outline' as const,
+    title: 'Premium Themes',
     description: 'Unlock Purple, Emerald, Amber, and Sunset themes',
   },
-  { 
-    icon: '📂', 
-    title: 'Custom Categories', 
+  {
+    icon: 'apps-outline' as const,
+    title: 'Custom Categories',
     description: 'Add custom incident types that matter to you',
   },
-  { 
-    icon: '📈', 
-    title: 'Advanced Analytics', 
+  {
+    icon: 'trending-up-outline' as const,
+    title: 'Advanced Analytics',
     description: 'Deep stats, trends, and relationship patterns',
   },
-  { 
-    icon: '☁️', 
-    title: 'Cloud Backup', 
+  {
+    icon: 'cloud-outline' as const,
+    title: 'Cloud Backup',
     description: 'Sync and access your data across all devices',
   },
-  { 
-    icon: '🚀', 
-    title: 'Early Access', 
+  {
+    icon: 'rocket-outline' as const,
+    title: 'Early Access',
     description: 'Be the first to try new features and updates',
   },
 ];
@@ -376,7 +377,7 @@ export default function PaywallScreen({ navigation }: any) {
     if (product.introPrice) {
       const period = product.introPrice.periodNumberOfUnits || 1;
       const unit = product.introPrice.periodUnit || 'week';
-      display += `Start ${period} ${unit}${period > 1 ? 's' : ''} Free Trial • `;
+      display += `Try ${period} ${unit} free · `;
     }
 
     // Add regular price
@@ -468,14 +469,14 @@ export default function PaywallScreen({ navigation }: any) {
                 ]}
               >
                 <View style={[styles.featureIcon, { backgroundColor: theme.primary + '12' }]}>
-                  <Text style={styles.featureEmoji}>{feature.icon}</Text>
+                  <Ionicons name={feature.icon} size={20} color={theme.primary} />
                 </View>
                 <View style={styles.featureText}>
                   <Text style={[styles.featureTitle, { color: theme.text }]}>{feature.title}</Text>
                   <Text style={[styles.featureDescription, { color: theme.textMuted }]}>{feature.description}</Text>
                 </View>
                 <View style={[styles.checkCircle, { backgroundColor: theme.primary + '15' }]}>
-                  <Text style={[styles.checkmark, { color: theme.primary }]}>✓</Text>
+                  <Ionicons name="checkmark" size={14} color={theme.primary} />
                 </View>
               </View>
             ))}
@@ -488,7 +489,7 @@ export default function PaywallScreen({ navigation }: any) {
           style={styles.guaranteeSection}
         >
           <View style={[styles.guaranteeCard, { backgroundColor: theme.primary + '08' }]}>
-            <Text style={styles.guaranteeIcon}>🛡️</Text>
+            <Ionicons name="ribbon-outline" size={28} color={theme.primary} />
             <View style={styles.guaranteeText}>
               <Text style={[styles.guaranteeTitle, { color: theme.text }]}>Money-Back Guarantee</Text>
               <Text style={[styles.guaranteeDescription, { color: theme.textMuted }]}>

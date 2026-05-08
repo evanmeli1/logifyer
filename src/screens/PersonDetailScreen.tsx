@@ -6,11 +6,12 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
-import { 
-  getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson, 
-  resetPersonScore, getAllRelationshipTypes, checkPersonNameExists, getDatabase,
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  getPersonById, getIncidentsByPerson, getPersonScore, deleteIncident, deletePerson,
+  resetPersonScore, getAllRelationshipTypes, checkPersonNameExists, getDatabase, archivePerson,
 } from '../database/db';
 import { Person } from '../types';
 import { generatePersonInsights, AIInsightsResult } from '../services/ai';
@@ -103,6 +104,8 @@ export default function PersonDetailScreen({ route }: any) {
   const [feelingFilter, setFeelingFilter] = useState<FeelingFilter>('all');
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>('all');
+  const [showScoreInfo, setShowScoreInfo] = useState(false);
+  const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
   React.useEffect(() => {
     setVisibleCount(50);
@@ -155,20 +158,17 @@ export default function PersonDetailScreen({ route }: any) {
 
   const ensurePhotoDir = async () => {
     try {
-      const dirInfo = await FileSystem.getInfoAsync(PHOTO_DIR);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(PHOTO_DIR, { intermediates: true });
-      }
-    } catch (error) {
-      console.error('Error creating photo directory:', error);
+      await FileSystem.makeDirectoryAsync(PHOTO_DIR, { intermediates: true });
+    } catch {
+      // Already exists — fine
     }
   };
 
   const loadPhoto = async () => {
     try {
       const photoPath = `${PHOTO_DIR}${personId}.jpg`;
-      const photoInfo = await FileSystem.getInfoAsync(photoPath);
-      if (photoInfo.exists && isMountedRef.current) {
+      const info = await FileSystem.getInfoAsync(photoPath);
+      if (info.exists && isMountedRef.current) {
         setPhotoUri(photoPath);
       } else if (isMountedRef.current) {
         setPhotoUri(null);
@@ -187,7 +187,6 @@ export default function PersonDetailScreen({ route }: any) {
       const photoPath = `${PHOTO_DIR}${personId}.jpg`;
       await FileSystem.copyAsync({ from: uri, to: photoPath });
       if (isMountedRef.current) {
-        // Use timestamp for cache busting only when actually needed
         setPhotoUri(photoPath + '?' + Date.now());
       }
     } catch (error) {
@@ -199,10 +198,7 @@ export default function PersonDetailScreen({ route }: any) {
   const removePhoto = async () => {
     try {
       const photoPath = `${PHOTO_DIR}${personId}.jpg`;
-      const photoInfo = await FileSystem.getInfoAsync(photoPath);
-      if (photoInfo.exists) {
-        await FileSystem.deleteAsync(photoPath);
-      }
+      await FileSystem.deleteAsync(photoPath, { idempotent: true });
       if (isMountedRef.current) {
         setPhotoUri(null);
       }
@@ -212,34 +208,7 @@ export default function PersonDetailScreen({ route }: any) {
     }
   };
 
-  const handleAvatarPress = () => {
-    if (Platform.OS === 'ios') {
-      const options = photoUri 
-        ? ['Take Photo', 'Choose from Library', 'Remove Photo', 'Cancel']
-        : ['Take Photo', 'Choose from Library', 'Cancel'];
-      
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: options.length - 1,
-          destructiveButtonIndex: photoUri ? 2 : undefined,
-        },
-        async (buttonIndex) => {
-          if (buttonIndex === 0) await pickImage('camera');
-          else if (buttonIndex === 1) await pickImage('library');
-          else if (buttonIndex === 2 && photoUri) removePhoto();
-        }
-      );
-    } else {
-      const buttons: any[] = [
-        { text: 'Take Photo', onPress: () => pickImage('camera') },
-        { text: 'Choose from Library', onPress: () => pickImage('library') },
-      ];
-      if (photoUri) buttons.push({ text: 'Remove Photo', onPress: removePhoto, style: 'destructive' });
-      buttons.push({ text: 'Cancel', style: 'cancel' });
-      Alert.alert('Profile Photo', 'Choose an option', buttons);
-    }
-  };
+  const handleAvatarPress = () => setShowPhotoSheet(true);
 
   const pickImage = async (source: 'camera' | 'library') => {
     try {
@@ -258,7 +227,7 @@ export default function PersonDetailScreen({ route }: any) {
       }
 
       const options: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images' as any,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -407,6 +376,28 @@ export default function PersonDetailScreen({ route }: any) {
     }, 200);
   };
 
+  const handleArchive = () => {
+    closeMenu();
+    setTimeout(() => {
+      if (!isMountedRef.current) return;
+      Alert.alert('Archive Person', `Archive ${person?.name}? They will be hidden from your main list but their data is kept.`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          onPress: () => {
+            try {
+              archivePerson(personId);
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error archiving person:', error);
+              Alert.alert('Error', 'Failed to archive person');
+            }
+          },
+        },
+      ]);
+    }, 200);
+  };
+
   const handleDelete = () => {
     closeMenu();
     setTimeout(() => {
@@ -486,8 +477,8 @@ export default function PersonDetailScreen({ route }: any) {
       ]);
       return;
     }
-    if (incidents.length === 0) {
-      Alert.alert('No Data', 'Add some incidents first to generate insights.');
+    if (incidents.length < 5) {
+      Alert.alert('Not Enough Data', 'Log at least 5 incidents first to generate meaningful insights.');
       return;
     }
     setLoadingInsights(true);
@@ -571,7 +562,7 @@ export default function PersonDetailScreen({ route }: any) {
 
   const getRelationshipEmoji = (type: string) => {
     const found = relationshipTypes.find(r => r.type === type);
-    return found?.emoji || '👤';
+    return found?.emoji || '○';
   };
 
   const renderIncident = ({ item }: any) => {
@@ -690,30 +681,39 @@ export default function PersonDetailScreen({ route }: any) {
               </View>
             )}
             <View style={styles.cameraBadge}>
-              <Text style={styles.cameraBadgeIcon}>✏️</Text>
+              <Ionicons name="create-outline" size={14} color="#555" />
             </View>
           </TouchableOpacity>
 
           <View style={styles.relationshipPill}>
-            <Text style={styles.relationshipEmoji}>{getRelationshipEmoji(person.relationship_type)}</Text>
             <Text style={styles.relationshipType}>{person.relationship_type}</Text>
           </View>
 
           <Text style={styles.personName}>{person.name}</Text>
           
-          <View style={styles.scoreCard}>
-            <View style={styles.scoreSection}>
-              <Text style={[styles.scoreNumber, { color: health.color }]}>{score}</Text>
-              <Text style={styles.scoreSectionLabel}>Score</Text>
-            </View>
-            <View style={styles.scoreDivider} />
-            <View style={styles.scoreSection}>
-              <View style={[styles.gradeBadge, { backgroundColor: health.color }]}>
-                <Text style={styles.gradeText}>{health.grade}</Text>
+          <TouchableOpacity onPress={() => setShowScoreInfo(v => !v)} activeOpacity={0.8}>
+            <View style={styles.scoreCard}>
+              <View style={styles.scoreSection}>
+                <Text style={[styles.scoreNumber, { color: health.color }]}>{score}</Text>
+                <Text style={styles.scoreSectionLabel}>Score</Text>
               </View>
-              <Text style={styles.scoreSectionLabel}>Grade</Text>
+              <View style={styles.scoreDivider} />
+              <View style={styles.scoreSection}>
+                <View style={[styles.gradeBadge, { backgroundColor: health.color }]}>
+                  <Text style={styles.gradeText}>{health.grade}</Text>
+                </View>
+                <Text style={styles.scoreSectionLabel}>Grade</Text>
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
+
+          {showScoreInfo && (
+            <View style={styles.scoreInfoBox}>
+              <Text style={styles.scoreInfoText}>
+                Starts at 100 · {incidents.length} log{incidents.length !== 1 ? 's' : ''} · {incidents.filter(i => i.points > 0).length} positive, {incidents.filter(i => i.points < 0).length} negative · consistency shapes the score
+              </Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity style={styles.menuButton} onPress={openMenu}>
@@ -732,7 +732,7 @@ export default function PersonDetailScreen({ route }: any) {
             
             <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]} onPress={openEditModal} activeOpacity={0.7}>
               <View style={[styles.menuItemIcon, { backgroundColor: theme.primary + '15' }]}>
-                <Text style={styles.menuItemIconText}>✏️</Text>
+                <Ionicons name="create-outline" size={18} color={theme.primary} />
               </View>
               <Text style={[styles.floatingMenuText, { color: theme.text }]}>Edit Person</Text>
               <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
@@ -740,7 +740,7 @@ export default function PersonDetailScreen({ route }: any) {
 
             <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]} onPress={() => { closeMenu(); setTimeout(() => { if (isMountedRef.current) setSelectionMode(true); }, 200); }} activeOpacity={0.7}>
               <View style={[styles.menuItemIcon, { backgroundColor: '#3B82F615' }]}>
-                <Text style={styles.menuItemIconText}>☑️</Text>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#3B82F6" />
               </View>
               <Text style={[styles.floatingMenuText, { color: theme.text }]}>Select Multiple</Text>
               <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
@@ -748,22 +748,51 @@ export default function PersonDetailScreen({ route }: any) {
 
             <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]} onPress={handleResetScore} activeOpacity={0.7}>
               <View style={[styles.menuItemIcon, { backgroundColor: '#F59E0B15' }]}>
-                <Text style={styles.menuItemIconText}>🔄</Text>
+                <Ionicons name="refresh-outline" size={18} color="#F59E0B" />
               </View>
               <Text style={[styles.floatingMenuText, { color: theme.text }]}>Reset Score</Text>
               <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomColor: theme.divider }]} onPress={handleArchive} activeOpacity={0.7}>
+              <View style={[styles.menuItemIcon, { backgroundColor: '#F59E0B15' }]}>
+                <Ionicons name="archive-outline" size={18} color="#F59E0B" />
+              </View>
+              <Text style={[styles.floatingMenuText, { color: theme.text }]}>Archive</Text>
+              <Text style={[styles.menuItemArrow, { color: theme.textMuted }]}>›</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={[styles.floatingMenuItem, { borderBottomWidth: 0 }]} onPress={handleDelete} activeOpacity={0.7}>
               <View style={[styles.menuItemIcon, { backgroundColor: '#EF444415' }]}>
-                <Text style={styles.menuItemIconText}>🗑️</Text>
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
               </View>
-              <Text style={[styles.floatingMenuText, { color: '#EF4444' }]}>Delete Person</Text>
+              <Text style={[styles.floatingMenuText, { color: '#EF4444' }]}>Delete Permanently</Text>
               <Text style={[styles.menuItemArrow, { color: '#EF4444' }]}>›</Text>
             </TouchableOpacity>
           </Animated.View>
         </>
       )}
+
+      <Modal visible={showPhotoSheet} transparent animationType="fade" onRequestClose={() => setShowPhotoSheet(false)}>
+        <Pressable style={styles.photoSheetOverlay} onPress={() => setShowPhotoSheet(false)}>
+          <Pressable style={[styles.photoSheet, { backgroundColor: theme.card }]} onPress={e => e.stopPropagation()}>
+            <TouchableOpacity style={[styles.photoSheetBtn, { borderBottomColor: theme.divider }]} activeOpacity={0.7} onPress={() => { setShowPhotoSheet(false); pickImage('camera'); }}>
+              <Ionicons name="camera-outline" size={20} color={theme.text} />
+              <Text style={[styles.photoSheetBtnText, { color: theme.text }]}>Take Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.photoSheetBtn, { borderBottomColor: theme.divider }]} activeOpacity={0.7} onPress={() => { setShowPhotoSheet(false); pickImage('library'); }}>
+              <Ionicons name="image-outline" size={20} color={theme.text} />
+              <Text style={[styles.photoSheetBtnText, { color: theme.text }]}>Choose from Library</Text>
+            </TouchableOpacity>
+            {photoUri && (
+              <TouchableOpacity style={[styles.photoSheetBtn, { borderBottomWidth: 0 }]} activeOpacity={0.7} onPress={() => { setShowPhotoSheet(false); removePhoto(); }}>
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <Text style={[styles.photoSheetBtnText, { color: '#EF4444' }]}>Remove Photo</Text>
+              </TouchableOpacity>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={showEditModal} transparent animationType="fade" onRequestClose={() => setShowEditModal(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowEditModal(false)}>
@@ -788,7 +817,7 @@ export default function PersonDetailScreen({ route }: any) {
                 </View>
               )}
               <View style={styles.editCameraBadge}>
-                <Text style={styles.editCameraBadgeIcon}>✏️</Text>
+                <Ionicons name="create-outline" size={12} color="#555" />
               </View>
             </TouchableOpacity>
             <Text style={[styles.tapToChangeText, { color: theme.textMuted }]}>Tap to change photo</Text>
@@ -1016,7 +1045,7 @@ export default function PersonDetailScreen({ route }: any) {
         ListHeaderComponent={() => (
           <>
             <View style={[styles.sectionCard, { backgroundColor: theme.card }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>📊 Patterns</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Patterns</Text>
               {incidents.length > 0 ? (
                 <View style={styles.patternsList}>
                   <View style={[styles.patternRow, { borderBottomColor: theme.divider }]}>
@@ -1073,12 +1102,21 @@ export default function PersonDetailScreen({ route }: any) {
 
             <View style={[styles.sectionCard, { backgroundColor: theme.card }]}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>🤖 AI Insights</Text>
-                <View style={[styles.premiumBadge, { backgroundColor: theme.primary + '20' }]}>
-                  <Text style={[styles.premiumBadgeText, { color: theme.primary }]}>PRO</Text>
-                </View>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>AI Insights</Text>
+                <LinearGradient
+                  colors={['#F59E0B', '#EC4899', '#8B5CF6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.premiumBadge}
+                >
+                  <Text style={styles.premiumBadgeText}>PRO</Text>
+                </LinearGradient>
               </View>
-              {!aiInsights ? (
+              {incidents.length < 5 ? (
+                <Text style={[styles.insightsTimestamp, { color: theme.textMuted }]}>
+                  Log at least {5 - incidents.length} more {5 - incidents.length === 1 ? 'incident' : 'incidents'} to unlock insights.
+                </Text>
+              ) : !aiInsights ? (
                 <TouchableOpacity style={[styles.generateButton, { backgroundColor: theme.primary }]} onPress={() => handleGenerateInsights(false)} disabled={loadingInsights} activeOpacity={0.8}>
                   <Text style={styles.generateButtonText}>{loadingInsights ? 'Analyzing...' : 'Generate Insights'}</Text>
                 </TouchableOpacity>
@@ -1086,12 +1124,12 @@ export default function PersonDetailScreen({ route }: any) {
                 <View style={[styles.insightsBox, { backgroundColor: theme.backgroundSecondary, borderLeftColor: theme.primary }]}>
                   <View style={styles.insightsHeader}>
                     <Text style={[styles.insightsTimestamp, { color: theme.textMuted }]}>
-                      {aiInsights.isCached ? '📦 Cached' : '✨ Fresh'} • {aiInsights.generatedAt}
+                      {aiInsights.isCached ? 'Cached' : 'Fresh'} • {aiInsights.generatedAt}
                     </Text>
                   </View>
                   <Text style={[styles.insightsText, { color: theme.text }]}>{aiInsights.content}</Text>
                   <TouchableOpacity style={styles.regenerateButton} onPress={() => handleGenerateInsights(true)} disabled={loadingInsights}>
-                    <Text style={[styles.regenerateButtonText, { color: theme.primary }]}>{loadingInsights ? 'Analyzing...' : '🔄 Regenerate'}</Text>
+                    <Text style={[styles.regenerateButtonText, { color: theme.primary }]}>{loadingInsights ? 'Analyzing...' : 'Regenerate'}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -1233,6 +1271,33 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontFamily: 'Poppins_700Bold',
     color: '#FFF',
+  },
+  photoSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  photoSheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  photoSheetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderBottomWidth: 1,
+  },
+  photoSheetBtnText: {
+    fontSize: 17,
+    fontFamily: 'Poppins_600SemiBold',
   },
   cameraBadge: {
     position: 'absolute',
@@ -1636,17 +1701,19 @@ patternValue: {
   emptyPatterns: {
     fontSize: 14,
     fontFamily: 'Poppins_400Regular',
-    textAlign: 'center',
+    textAlign: 'left',
     paddingVertical: 16,
   },
   premiumBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    overflow: 'hidden',
   },
   premiumBadgeText: {
     fontSize: 10,
     fontFamily: 'Poppins_700Bold',
+    color: '#FFFFFF',
   },
   generateButton: {
     padding: 14,
@@ -2058,5 +2125,19 @@ filterFeelingText: {
   fontSize: 12,
   fontFamily: 'Poppins_700Bold',
   lineHeight: 14,
+},
+scoreInfoBox: {
+  backgroundColor: 'rgba(255,255,255,0.15)',
+  borderRadius: 10,
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  marginTop: 8,
+  marginHorizontal: 20,
+},
+scoreInfoText: {
+  color: 'rgba(255,255,255,0.9)',
+  fontSize: 12,
+  fontFamily: 'Poppins_500Medium',
+  textAlign: 'center',
 },
 });

@@ -3,6 +3,8 @@ export interface Person {
   name: string;
   photo_uri: string | null;
   relationship_type: string;
+  archived: number;
+  is_favorite: number;
   created_at: string;
 }
 
@@ -22,5 +24,8 @@ export interface Incident {
   points: number;
   is_major: number;
   note: string | null;
+  feeling_key: string | null;
+  category_name: string | null;
+  category_emoji: string | null;
   timestamp: string;
 }
